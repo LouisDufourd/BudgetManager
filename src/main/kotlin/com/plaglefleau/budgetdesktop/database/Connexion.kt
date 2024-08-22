@@ -1,5 +1,6 @@
 package com.plaglefleau.budgetdesktop.database
 
+import java.io.File
 import java.sql.Connection
 import java.sql.DriverManager
 
@@ -21,6 +22,12 @@ class Connexion {
     }
 
     fun getConnection(): Connection {
-        return DriverManager.getConnection("jdbc:sqlite:budget.db")
+        val userHome = System.getProperty("user.home")
+        val documentsPath = "${userHome + File.separator}Documents"
+        val dbPath = "${documentsPath + File.separator}Budget Manager${File.separator}budget.db"
+
+        File(dbPath).parentFile.mkdirs()
+
+        return DriverManager.getConnection("jdbc:sqlite:$dbPath")
     }
 }

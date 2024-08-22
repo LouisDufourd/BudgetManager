@@ -17,11 +17,13 @@ import java.net.URL
 import java.nio.file.Paths
 import java.text.DecimalFormat
 import java.text.SimpleDateFormat
+import java.time.LocalDate
 import java.util.*
 import kotlin.reflect.full.memberProperties
 import kotlin.system.exitProcess
 
 class MainController : Initializable {
+
 
     lateinit var databaseTransactionModelTableView: TableView<DatabaseTransactionModel>
     lateinit var fluctuationTextField: TextField
@@ -31,6 +33,11 @@ class MainController : Initializable {
     lateinit var datePicker: DatePicker
     lateinit var loadFileButton: MenuItem
     lateinit var quitButton: MenuItem
+    lateinit var showAll: RadioMenuItem
+    lateinit var onlyDebits: RadioMenuItem
+    lateinit var onlyCredits: RadioMenuItem
+
+    lateinit var toggleGroup: ToggleGroup
 
     private val databaseManager = DatabaseManager()
     private val transactionManager = TransactionManager()
@@ -38,10 +45,23 @@ class MainController : Initializable {
     var primaryStage: Stage? = null
 
     override fun initialize(url: URL?, resource: ResourceBundle?) {
-        val transactionList = databaseManager.getTransactions()
-        createColumns(databaseTransactionModelTableView, DatabaseTransactionModel::class)
+        val transactionList = getTransactions()
+        setColumns(databaseTransactionModelTableView, DatabaseTransactionModel::class)
         databaseTransactionModelTableView.items.setAll(transactionList)
         setTotalCreditDebitAndFluctuation()
+
+        toggleGroup = ToggleGroup()
+        toggleGroup.toggles.setAll(showAll, onlyDebits, onlyCredits)
+        showAll.isSelected = true
+
+        setupListeners()
+
+    }
+
+    private fun setupListeners() {
+        toggleGroup.selectedToggleProperty().addListener { _, _, _ ->
+            databaseTransactionModelTableView.items = getFilteredList()
+        }
 
         loadFileButton.setOnAction {
             val fileChooser = FileChooser()
@@ -80,22 +100,7 @@ class MainController : Initializable {
     }
 
     private fun getFilteredList(): ObservableList<DatabaseTransactionModel> {
-        val transactions = FXCollections.observableList(databaseManager.getTransactions())
-
-        return if (datePicker.value == null) {
-            // Return all items if no date is selected
-            FXCollections.observableArrayList(transactions)
-        } else {
-
-            val calendar = Calendar.getInstance()
-            calendar.time = Date.from(datePicker.value.atStartOfDay(calendar.timeZone.toZoneId()).toInstant())
-
-            if (dateDirectionSwitch.isSelected) {
-                FXCollections.observableList(databaseManager.getTransactionsAfter(calendar))
-            } else {
-                FXCollections.observableList(databaseManager.getTransactionsBefore(calendar))
-            }
-        }
+        return FXCollections.observableArrayList(getTransactions())
     }
 
     private fun getDownloadsFolder(): File? {
@@ -111,13 +116,21 @@ class MainController : Initializable {
         }
     }
 
+    private fun calendarFromLocalDate(localeDate: LocalDate): Calendar {
+        val calendar = Calendar.getInstance()
+        calendar.time = Date.from(localeDate.atStartOfDay(calendar.timeZone.toZoneId()).toInstant())
+        return calendar
+    }
+
     private fun setTotalCreditDebitAndFluctuation() {
         val decimalFormat = DecimalFormat("#0.00€")
 
         var totalDebit = 0.0
         var totalCredit = 0.0
 
-        databaseTransactionModelTableView.items.forEach {
+        val transactions = getTransactionsBasedOnSelectedDate()
+
+        transactions.forEach {
             totalDebit += it.debit ?: 0.0
             totalCredit += it.credit ?: 0.0
         }
@@ -127,43 +140,78 @@ class MainController : Initializable {
         fluctuationTextField.text = decimalFormat.format(totalCredit - totalDebit)
     }
 
-    private fun <T : Any> createColumns(tableView: TableView<T>, kClass: kotlin.reflect.KClass<T>) {
+    private fun getTransactionsBasedOnSelectedDate() : List<DatabaseTransactionModel> {
+        return if(datePicker.value == null) {
+            databaseManager.getTransactions()
+        } else {
+            val calendar = calendarFromLocalDate(datePicker.value)
+            if(dateDirectionSwitch.isSelected) {
+                databaseManager.getTransactionsAfter(calendar)
+            } else {
+                databaseManager.getTransactionsBefore(calendar)
+            }
+        }
+    }
+
+    private fun getTransactions(): List<DatabaseTransactionModel> {
+        val transactions = getTransactionsBasedOnSelectedDate()
+
+        return if(onlyCredits.isSelected) {
+            transactions.filter {
+                it.credit != 0.0 && it.debit == 0.0
+            }
+        } else if (onlyDebits.isSelected) {
+            transactions.filter {
+                it.debit != 0.0 && it.credit == 0.0
+            }
+        } else {
+            transactions
+        }
+    }
+
+    private fun <T : Any> setColumns(tableView: TableView<T>, kClass: kotlin.reflect.KClass<T>) {
+        tableView.columns.clear()
         kClass.memberProperties.forEach { prop ->
             val column = TableColumn<T, String>(prop.name.capitalize())
 
             // Custom cell value factory for Calendar
-            if (prop.returnType.classifier == Calendar::class) {
-                val dateFormat = SimpleDateFormat("dd/MM/yyyy")
+            when (prop.returnType.classifier) {
+                Calendar::class -> {
+                    val dateFormat = SimpleDateFormat("dd/MM/yyyy")
 
-                column.cellValueFactory = Callback { cellData ->
-                    val calendar = prop.get(cellData.value) as? Calendar
-                    SimpleStringProperty(calendar?.let { dateFormat.format(it.time) } ?: "")
-                }
+                    column.cellValueFactory = Callback { cellData ->
+                        val calendar = prop.get(cellData.value) as? Calendar
+                        SimpleStringProperty(calendar?.let { dateFormat.format(it.time) } ?: "")
+                    }
 
-                column.comparator = Comparator { string1, string2 ->
-                    val date1 = dateFormat.parse(string1)
-                    val date2 = dateFormat.parse(string2)
+                    column.comparator = Comparator { string1, string2 ->
+                        val date1 = dateFormat.parse(string1)
+                        val date2 = dateFormat.parse(string2)
 
-                    if(date1.before(date2)) -1 else if (date1.after(date2)) 1 else 0
-                }
+                        if(date1.before(date2)) -1 else if (date1.after(date2)) 1 else 0
+                    }
 
-                tableView.columns.addFirst(column)
-            } else if (prop.returnType.classifier == Double::class) {
-                val df = DecimalFormat("#0.00€")
-                column.cellValueFactory = Callback { cellData ->
-                    val value = prop.get(cellData.value) as? Double
-                    SimpleStringProperty(df.format(value))
+                    tableView.columns.addFirst(column)
                 }
-                tableView.columns.add(column)
-            } else if (prop.returnType.classifier == String::class) {
-                column.cellValueFactory = Callback { cellData ->
-                    val value = prop.get(cellData.value) as? String
-                    SimpleStringProperty(value!!.replace("\n", "").replace("\r", "").replace("\"","").replace(Regex("\\s+"), " ").trim())
+                Double::class -> {
+                    val df = DecimalFormat("#0.00€")
+                    column.cellValueFactory = Callback { cellData ->
+                        val value = prop.get(cellData.value) as? Double
+                        SimpleStringProperty(df.format(value))
+                    }
+                    tableView.columns.add(column)
                 }
-                tableView.columns.add(column)
-            }else {
-                column.cellValueFactory = PropertyValueFactory<T, String>(prop.name)
-                tableView.columns.add(column)
+                String::class -> {
+                    column.cellValueFactory = Callback { cellData ->
+                        val value = prop.get(cellData.value) as? String
+                        SimpleStringProperty(value!!.replace("\n", "").replace("\r", "").replace("\"","").replace(Regex("\\s+"), " ").trim())
+                    }
+                    tableView.columns.add(column)
+                }
+                else -> {
+                    column.cellValueFactory = PropertyValueFactory<T, String>(prop.name)
+                    tableView.columns.add(column)
+                }
             }
 
         }

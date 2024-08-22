@@ -9,7 +9,7 @@ plugins {
 }
 
 group 'com.plaglefleau'
-version '1.0.0'
+version '1.1.1'
 
 repositories {
     mavenCentral()
@@ -67,3 +67,33 @@ jlink {
 jlinkZip {
     group = 'distribution'
 }
+
+tasks.register('moveJar', Copy) {
+    dependsOn(tasks.shadowJar)
+    delete(
+            fileTree(tasks.shadowJar.archiveFile.get().asFile.getParent() + "/BudgetDesktop")
+                    .matching {
+                        include("*.jar")
+                    }
+    )
+    from(tasks.shadowJar.archiveFile.get().asFile.absolutePath)
+    into(tasks.shadowJar.archiveFile.get().asFile.getParent() + "/BudgetDesktop")
+}
+
+tasks.register("cleanJar", Delete) {
+    dependsOn(tasks.moveJar)
+
+    delete(tasks.shadowJar.archiveFile.get().asFile.absolutePath)
+}
+
+tasks.register("jarToZip", Zip) {
+    dependsOn(tasks.cleanJar)
+
+    from(tasks.shadowJar.archiveFile.get().asFile.getParent() + "/BudgetDesktop")
+
+    archiveFileName.set(project.name + "-" + version + ".zip")
+
+    destinationDirectory.set(file("build/output"))
+
+}
+

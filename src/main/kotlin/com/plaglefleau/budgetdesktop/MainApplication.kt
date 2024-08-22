@@ -15,8 +15,10 @@ class MainApplication : Application() {
         val scene = Scene(fxmlLoader.load())
         stage.title = "Budget Desktop"
         stage.scene = scene
-        stage.isResizable = false
         stage.setOnCloseRequest {}
+        stage.minWidth = 850.0
+        stage.minHeight = 600.0
+        stage.height = 600.0
         stage.icons.add(
             Image(javaClass.getResourceAsStream("/images/icon.png"))
         )
