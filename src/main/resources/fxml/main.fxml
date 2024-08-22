@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.CheckBox?>
+<?import javafx.scene.control.DatePicker?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.Menu?>
+<?import javafx.scene.control.MenuBar?>
+<?import javafx.scene.control.MenuItem?>
+<?import javafx.scene.control.SeparatorMenuItem?>
+<?import javafx.scene.control.TableView?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.layout.AnchorPane?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.text.Font?>
+<?import javafx.scene.text.Text?>
+
+<VBox prefHeight="400.0" prefWidth="640.0" xmlns="http://javafx.com/javafx/22" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.plaglefleau.budgetdesktop.MainController">
+  <MenuBar VBox.vgrow="NEVER">
+    <Menu mnemonicParsing="false" text="File">
+         <MenuItem fx:id="loadFileButton" mnemonicParsing="false" text="Load from csv file" />
+      <SeparatorMenuItem mnemonicParsing="false" />
+      <MenuItem fx:id="quitButton" mnemonicParsing="false" text="Quit" />
+    </Menu>
+    <Menu mnemonicParsing="false" text="Help">
+      <MenuItem mnemonicParsing="false" text="About MyHelloApp" />
+    </Menu>
+  </MenuBar>
+  <AnchorPane VBox.vgrow="ALWAYS">
+    <Label alignment="CENTER" layoutX="155.0" layoutY="177.0" style="&#10;" text="Drag components from Library here…" textAlignment="CENTER" textFill="#9f9f9f">
+      <font>
+        <Font size="18.0" />
+      </font>
+    </Label>
+      <TableView fx:id="databaseTransactionModelTableView" layoutX="220.0" layoutY="25.0" prefHeight="350.0" prefWidth="640.0" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="25.0">
+        <columns>
+        </columns>
+      </TableView>
+      <DatePicker fx:id="datePicker" layoutX="76.0" prefHeight="25.0" prefWidth="174.0" />
+      <CheckBox fx:id="dateDirectionSwitch" layoutX="14.0" layoutY="4.0" mnemonicParsing="false" text="Before" />
+      <Label layoutX="250.0" layoutY="4.0" text=" Debit Total : " />
+      <Label layoutX="385.0" layoutY="4.0" text=" Credit Total : " />
+      <TextField fx:id="totalDebitTextField" editable="false" layoutX="320.0" prefHeight="25.0" prefWidth="65.0" />
+      <TextField fx:id="totalCreditTextField" editable="false" layoutX="460.0" prefHeight="25.0" prefWidth="65.0" />
+      <Text layoutX="525.0" layoutY="17.0" strokeType="OUTSIDE" strokeWidth="0.0" text=" Fluctuation : " />
+      <TextField fx:id="fluctuationTextField" editable="false" layoutX="596.0" prefHeight="25.0" prefWidth="65.0" />
+  </AnchorPane>
+</VBox>
