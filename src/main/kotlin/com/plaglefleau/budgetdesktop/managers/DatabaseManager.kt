@@ -2,6 +2,7 @@ package com.plaglefleau.budgetdesktop.managers
 
 import com.plaglefleau.budgetdesktop.database.models.DatabaseTransactionModel
 import java.sql.Date
+import java.sql.ResultSet
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -40,6 +41,31 @@ class DatabaseManager {
         return databaseTransactionModel;
     }
 
+    /**
+     * Retrieves a list of transactions from the database that occurred between the specified dates.
+     *
+     * This method connects to the database, executes an SQL query to retrieve transactions with a date between the "before" and "after" dates (inclusive),
+     * and converts the retrieved data into a list of DatabaseTransactionModel objects.
+     *
+     * @param before The starting date (before or equal to) of the transactions to retrieve.
+     * @param after The ending date (after or equal to) of the transactions to retrieve.
+     * @return The list of transactions that occurred between the specified dates.
+     */
+    fun getTransactionsBetween(before: Calendar, after: Calendar): List<DatabaseTransactionModel> {
+        val connection = getConnection()
+        val preparedStatement = connection.prepareStatement(
+            "SELECT description, credit, debit, date FROM transactions WHERE date BETWEEN ? AND ? ORDER BY date DESC"
+        )
+        preparedStatement.setString(1, calendarToSqlDate(before).toString())
+        preparedStatement.setString(2, calendarToSqlDate(after).toString())
+        val rs = preparedStatement.executeQuery()
+        val transactions = getTransactionsFromResultSet(rs)
+        rs.close()
+        preparedStatement.close()
+        connection.close()
+        return transactions;
+    }
+
 
     /**
      * Retrieves a list of transactions from the database that occurred after the given date.
@@ -51,27 +77,17 @@ class DatabaseManager {
      * @return The list of transactions that occurred after the given date.
      */
     fun getTransactionsAfter(date: Calendar): List<DatabaseTransactionModel> {
-        val databaseTransactionModels = mutableListOf<DatabaseTransactionModel>()
         val connection = getConnection()
         val preparedStatement = connection.prepareStatement(
             "SELECT description, credit, debit, date FROM transactions WHERE date >= ? ORDER BY date DESC"
         )
         preparedStatement.setString(1, calendarToSqlDate(date).toString())
         val rs = preparedStatement.executeQuery()
-        while (rs.next()) {
-            databaseTransactionModels.add(
-                DatabaseTransactionModel(
-                    sqlDateToCalendar(rs.getString("date")),
-                    rs.getString("description"),
-                    rs.getDouble("credit"),
-                    rs.getDouble("debit")
-                )
-            )
-        }
+        val transactions = getTransactionsFromResultSet(rs)
         rs.close()
         preparedStatement.close()
         connection.close()
-        return databaseTransactionModels;
+        return transactions;
     }
 
     /**
@@ -231,5 +247,31 @@ class DatabaseManager {
         // Use the time in milliseconds from the Calendar object
         val millis = calendar.timeInMillis
         return Date(millis)
+    }
+
+    /**
+     * Retrieves a list of DatabaseTransactionModel objects from a ResultSet object.
+     *
+     * This function takes a ResultSet object representing the result of an SQL query and converts the retrieved data into a list of DatabaseTransactionModel objects.
+     * The ResultSet object is expected to have the columns "date", "description", "credit", and "debit".
+     * For each row in the ResultSet, a new DatabaseTransactionModel object is created with the corresponding values from the ResultSet columns.
+     * The newly created DatabaseTransactionModel objects are added to a list, which is then returned.
+     *
+     * @param rs The ResultSet object containing the retrieved data.
+     * @return The list of DatabaseTransactionModel objects.
+     */
+    private fun getTransactionsFromResultSet(rs: ResultSet): List<DatabaseTransactionModel> {
+        val transactions = mutableListOf<DatabaseTransactionModel>()
+        while (rs.next()) {
+            transactions.add(
+                DatabaseTransactionModel(
+                    sqlDateToCalendar(rs.getString("date")),
+                    rs.getString("description"),
+                    rs.getDouble("credit"),
+                    rs.getDouble("debit")
+                )
+            )
+        }
+        return transactions;
     }
 }

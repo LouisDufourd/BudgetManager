@@ -29,15 +29,15 @@ class MainController : Initializable {
     lateinit var fluctuationTextField: TextField
     lateinit var totalCreditTextField: TextField
     lateinit var totalDebitTextField: TextField
-    lateinit var dateDirectionSwitch: CheckBox
-    lateinit var datePicker: DatePicker
+    lateinit var beforeDatePicker: DatePicker
+    lateinit var afterDatePicker: DatePicker
     lateinit var loadFileButton: MenuItem
     lateinit var quitButton: MenuItem
     lateinit var showAll: RadioMenuItem
     lateinit var onlyDebits: RadioMenuItem
     lateinit var onlyCredits: RadioMenuItem
 
-    lateinit var toggleGroup: ToggleGroup
+    private lateinit var toggleGroup: ToggleGroup
 
     private val databaseManager = DatabaseManager()
     private val transactionManager = TransactionManager()
@@ -78,22 +78,16 @@ class MainController : Initializable {
             }
         }
 
-        datePicker.setOnAction {
-            databaseTransactionModelTableView.items = getFilteredList()
-            setTotalCreditDebitAndFluctuation()
-        }
-
         quitButton.setOnAction {
             exitProcess(0)
         }
 
-        dateDirectionSwitch.setOnMouseClicked {
-            if(dateDirectionSwitch.isSelected) {
-                dateDirectionSwitch.text = "After"
-            } else {
-                dateDirectionSwitch.text = "Before"
-            }
+        beforeDatePicker.setOnAction {
+            databaseTransactionModelTableView.items = getFilteredList()
+            setTotalCreditDebitAndFluctuation()
+        }
 
+        afterDatePicker.setOnAction {
             databaseTransactionModelTableView.items = getFilteredList()
             setTotalCreditDebitAndFluctuation()
         }
@@ -141,15 +135,21 @@ class MainController : Initializable {
     }
 
     private fun getTransactionsBasedOnSelectedDate() : List<DatabaseTransactionModel> {
-        return if(datePicker.value == null) {
+        return if (afterDatePicker.value == null && beforeDatePicker.value == null) {
             databaseManager.getTransactions()
+        } else if (afterDatePicker.value == null && beforeDatePicker.value != null) {
+            databaseManager.getTransactionsBefore(
+                calendarFromLocalDate(beforeDatePicker.value)
+            )
+        } else if (afterDatePicker.value != null && beforeDatePicker.value == null) {
+            databaseManager.getTransactionsAfter(
+                calendarFromLocalDate(afterDatePicker.value)
+            )
         } else {
-            val calendar = calendarFromLocalDate(datePicker.value)
-            if(dateDirectionSwitch.isSelected) {
-                databaseManager.getTransactionsAfter(calendar)
-            } else {
-                databaseManager.getTransactionsBefore(calendar)
-            }
+            databaseManager.getTransactionsBetween(
+                calendarFromLocalDate(beforeDatePicker.value),
+                calendarFromLocalDate(afterDatePicker.value)
+            )
         }
     }
 

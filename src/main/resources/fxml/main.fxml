@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<?import javafx.scene.control.CheckBox?>
 <?import javafx.scene.control.DatePicker?>
 <?import javafx.scene.control.Label?>
 <?import javafx.scene.control.Menu?>
@@ -15,7 +14,7 @@
 <?import javafx.scene.text.Font?>
 <?import javafx.scene.text.Text?>
 
-<VBox minHeight="600.0" minWidth="826.0" prefHeight="600.0" prefWidth="640.0" xmlns="http://javafx.com/javafx/22" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.plaglefleau.budgetdesktop.MainController">
+<VBox minHeight="600.0" minWidth="980.0" prefHeight="600.0" prefWidth="640.0" xmlns="http://javafx.com/javafx/22" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.plaglefleau.budgetdesktop.MainController">
   <MenuBar VBox.vgrow="NEVER">
     <Menu mnemonicParsing="false" text="File">
          <MenuItem fx:id="loadFileButton" mnemonicParsing="false" text="Load from csv file" />
@@ -23,11 +22,9 @@
       <MenuItem fx:id="quitButton" mnemonicParsing="false" text="Quit" />
     </Menu>
     <Menu mnemonicParsing="false" text="Edit">
-         <items>
-            <RadioMenuItem fx:id="onlyCredits" mnemonicParsing="false" text="Only Credits" />
-            <RadioMenuItem fx:id="onlyDebits" mnemonicParsing="false" text="Only Debits" />
-            <RadioMenuItem fx:id="showAll" mnemonicParsing="false" text="Show All" />
-         </items>
+      <RadioMenuItem fx:id="onlyCredits" mnemonicParsing="false" text="Only Credits" />
+      <RadioMenuItem fx:id="onlyDebits" mnemonicParsing="false" text="Only Debits" />
+      <RadioMenuItem fx:id="showAll" mnemonicParsing="false" text="Show All" />
     </Menu>
     <Menu mnemonicParsing="false" text="Help">
       <MenuItem mnemonicParsing="false" text="About MyHelloApp" />
@@ -39,17 +36,19 @@
         <Font size="18.0" />
       </font>
     </Label>
-      <TableView fx:id="databaseTransactionModelTableView" layoutX="220.0" layoutY="25.0" prefHeight="472.0" prefWidth="826.0" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="25.0">
-        <columns>
-        </columns>
-      </TableView>
-      <DatePicker fx:id="datePicker" layoutX="76.0" prefHeight="25.0" prefWidth="174.0" />
-      <CheckBox fx:id="dateDirectionSwitch" layoutX="14.0" layoutY="4.0" mnemonicParsing="false" text="Before" />
-      <Label layoutX="250.0" layoutY="4.0" text=" Debit Total : " />
-      <Label layoutX="440.0" layoutY="4.0" text=" Credit Total : " />
-      <TextField fx:id="totalDebitTextField" editable="false" layoutX="320.0" prefHeight="25.0" prefWidth="120.0" />
-      <TextField fx:id="totalCreditTextField" editable="false" layoutX="515.0" prefHeight="25.0" prefWidth="120.0" />
-      <Text layoutX="635.0" layoutY="17.0" strokeType="OUTSIDE" strokeWidth="0.0" text=" Fluctuation : " />
-      <TextField fx:id="fluctuationTextField" editable="false" layoutX="706.0" prefHeight="25.0" prefWidth="120.0" />
+    <TableView fx:id="databaseTransactionModelTableView" layoutX="220.0" layoutY="25.0" prefHeight="472.0" prefWidth="979.0" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="25.0">
+      <columns>
+      </columns>
+    </TableView>
+    <Label layoutY="4.0" text=" Before : " />
+    <DatePicker fx:id="beforeDatePicker" layoutX="47.0" />
+    <Label layoutX="221.0" layoutY="4.0" text=" After : " />
+    <DatePicker fx:id="afterDatePicker" layoutX="260.0" prefHeight="25.0" prefWidth="174.0" />
+    <Label layoutX="434.0" layoutY="4.0" text=" Debit Total : " />
+    <Label layoutX="624.0" layoutY="4.0" text=" Credit Total : " />
+    <TextField fx:id="totalDebitTextField" editable="false" layoutX="504.0" prefHeight="25.0" prefWidth="120.0" />
+    <TextField fx:id="totalCreditTextField" editable="false" layoutX="699.0" prefHeight="25.0" prefWidth="120.0" />
+    <Text layoutX="819.0" layoutY="17.0" strokeType="OUTSIDE" strokeWidth="0.0" text=" Reste : " />
+    <TextField fx:id="fluctuationTextField" editable="false" layoutX="860.0" prefHeight="25.0" prefWidth="120.0" />
   </AnchorPane>
 </VBox>
