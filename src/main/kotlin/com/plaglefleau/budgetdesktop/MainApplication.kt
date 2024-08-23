@@ -1,5 +1,7 @@
 package com.plaglefleau.budgetdesktop
 
+import com.plaglefleau.budgetdesktop.controller.LoginController
+import com.plaglefleau.budgetdesktop.database.Connexion
 import javafx.application.Application
 import javafx.application.Application.launch
 import javafx.fxml.FXMLLoader
@@ -10,22 +12,20 @@ import javafx.stage.Stage
 class MainApplication : Application() {
     override fun start(stage: Stage) {
         val fxmlLoader = FXMLLoader()
-        fxmlLoader.location = javaClass.getResource("/fxml/main.fxml")
+        fxmlLoader.location = javaClass.getResource("/fxml/login.fxml")
 
         val scene = Scene(fxmlLoader.load())
         stage.title = "Budget Desktop"
         stage.scene = scene
         stage.setOnCloseRequest {}
-        stage.minWidth = 850.0
-        stage.minHeight = 600.0
-        stage.height = 600.0
+        stage.isResizable = false
         stage.icons.add(
             Image(javaClass.getResourceAsStream("/images/icon.png"))
         )
         stage.show()
 
 
-        val controller = fxmlLoader.getController<MainController>()
+        val controller = fxmlLoader.getController<LoginController>()
         controller.primaryStage = stage
     }
 }

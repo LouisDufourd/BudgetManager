@@ -1,187 +1,259 @@
 package com.plaglefleau.budgetdesktop.managers
 
+import com.plaglefleau.budgetdesktop.database.Connexion
 import com.plaglefleau.budgetdesktop.database.models.DatabaseTransactionModel
+import com.plaglefleau.budgetdesktop.database.models.User
+import java.sql.Connection
 import java.sql.Date
 import java.sql.ResultSet
 import java.text.SimpleDateFormat
 import java.util.*
 
-class DatabaseManager {
+class DatabaseManager(private val key: String) {
 
     private val format = SimpleDateFormat("yyyy-MM-dd")
 
+    companion object {
+        /**
+         * Registers a new user in the database with the provided username and password.
+         *
+         * @param username The username of the user to register.
+         * @param password The password of the user to register.
+         */
+        fun register(username: String, password: String) {
+            val connection = getConnection()
+            val preparedStatement = connection.prepareStatement(
+                "INSERT INTO users (username, password) VALUES (?, ?)"
+            )
+            preparedStatement.setString(1, username)
+            preparedStatement.setString(
+                2,
+                EncryptManager.hmacSha256(
+                    username + (username.length + password.length),
+                    password
+                )
+            )
+            preparedStatement.executeUpdate()
+            preparedStatement.close()
+            connection.close()
+        }
+
+        /**
+         * Retrieves a user from the database based on the provided username.
+         *
+         * @param username The username of the user.
+         * @return The User object representing the retrieved user, or null if no user is found.
+         */
+        private fun getUser(username: String): User? {
+            val connection = getConnection()
+            val preparedStatement = connection.prepareStatement(
+                "SELECT password FROM users WHERE username = ?"
+            )
+            preparedStatement.setString(1, username)
+            val rs = preparedStatement.executeQuery()
+            val user = if(rs.next()) {
+                User(
+                    username = username,
+                    password = rs.getString("password")
+                )
+            } else {
+                null
+            }
+
+            rs.close()
+            preparedStatement.close()
+            connection.close()
+
+            return user
+        }
+
+        /**
+         * Logs in a user with the provided username and password.
+         *
+         * @param username The username of the user.
+         * @param password The password of the user.
+         * @return A Boolean value indicating whether the login was successful.
+         */
+        fun login(username: String, password: String): Boolean {
+            val user = getUser(username)
+
+            if(user == null) {
+                register(username, password)
+                return true
+            } else {
+                return EncryptManager.hmacSha256(
+                    username + (username.length + password.length),
+                    password
+                ) == user.password
+            }
+        }
+
+        /**
+         * Retrieves a connection to the database.
+         *
+         * @return The connection to the database.
+         */
+        private fun getConnection(): Connection {
+            return Connexion().getConnection()
+        }
+    }
+
     /**
-     * Retrieves a transaction from the database based on the given date and description.
+     * Registers a new user in the database with the provided username and password.
      *
+     * @param username The username of the user to register.
+     * @param password The password of the user to register.
+     */
+    fun register(username: String, password: String) {
+        DatabaseManager.register(username, password)
+    }
+
+    /**
+     * Logs in a user with the provided username and password.
+     *
+     * @param username The username of the user.
+     * @param password The password of the user.
+     * @return A Boolean value indicating whether the login was successful.
+     */
+    fun login(username: String, password: String): Boolean {
+        return DatabaseManager.login(username, password)
+    }
+
+    /**
+     * Retrieves a transaction from the database based on the provided username, date, and description.
+     *
+     * @param username The username of the user who made the transaction.
      * @param date The date of the transaction.
      * @param description The description of the transaction.
-     * @return The Transaction object if found in the database, otherwise null.
+     * @return The DatabaseTransactionModel object representing the transaction, or null if no transaction is found.
      */
-    fun getTransactions(date: Calendar, description: String): DatabaseTransactionModel? {
-        val connection = getConnection()
-        val preparedStatement = connection.prepareStatement(
-            "SELECT credit, debit FROM transactions WHERE date = ? AND description = ? ORDER BY date DESC"
-        )
-        preparedStatement.setString(1, date.toString())
-        preparedStatement.setString(2, description)
-        val rs = preparedStatement.executeQuery()
-        val databaseTransactionModel = if (rs.next()) {
-            DatabaseTransactionModel(
-                date,
-                description,
-                rs.getDouble("credit"),
-                rs.getDouble("debit")
-            )
-        } else {
-            null
+    private fun transactionCount(databaseTransactionModel: DatabaseTransactionModel): Int {
+        val transactions = getTransactions(databaseTransactionModel.username)
+        return transactions.count {
+            it == databaseTransactionModel
         }
-        rs.close()
-        preparedStatement.close()
-        connection.close()
-        return databaseTransactionModel;
     }
 
     /**
-     * Retrieves a list of transactions from the database that occurred between the specified dates.
+     * Retrieves a list of transactions from the database that fall between the provided dates for a specific user.
      *
-     * This method connects to the database, executes an SQL query to retrieve transactions with a date between the "before" and "after" dates (inclusive),
-     * and converts the retrieved data into a list of DatabaseTransactionModel objects.
-     *
-     * @param before The starting date (before or equal to) of the transactions to retrieve.
-     * @param after The ending date (after or equal to) of the transactions to retrieve.
-     * @return The list of transactions that occurred between the specified dates.
+     * @param username The username of the user.
+     * @param startDate The calendar date representing the upper bound (exclusive) of the date range of the transactions.
+     * @param endDate The calendar date representing the lower bound (inclusive) of the date range of the transactions.
+     * @return The list of DatabaseTransactionModel objects representing the transactions.
      */
-    fun getTransactionsBetween(before: Calendar, after: Calendar): List<DatabaseTransactionModel> {
-        val connection = getConnection()
-        val preparedStatement = connection.prepareStatement(
-            "SELECT description, credit, debit, date FROM transactions WHERE date BETWEEN ? AND ? ORDER BY date DESC"
-        )
-        preparedStatement.setString(1, calendarToSqlDate(before).toString())
-        preparedStatement.setString(2, calendarToSqlDate(after).toString())
-        val rs = preparedStatement.executeQuery()
-        val transactions = getTransactionsFromResultSet(rs)
-        rs.close()
-        preparedStatement.close()
-        connection.close()
-        return transactions;
-    }
-
-
-    /**
-     * Retrieves a list of transactions from the database that occurred after the given date.
-     *
-     * This method connects to the database, executes an SQL query to retrieve transactions with a date greater than or equal to the given date,
-     * and converts the retrieved data into a list of Transaction objects.
-     *
-     * @param date The date to retrieve transactions after.
-     * @return The list of transactions that occurred after the given date.
-     */
-    fun getTransactionsAfter(date: Calendar): List<DatabaseTransactionModel> {
-        val connection = getConnection()
-        val preparedStatement = connection.prepareStatement(
-            "SELECT description, credit, debit, date FROM transactions WHERE date >= ? ORDER BY date DESC"
-        )
-        preparedStatement.setString(1, calendarToSqlDate(date).toString())
-        val rs = preparedStatement.executeQuery()
-        val transactions = getTransactionsFromResultSet(rs)
-        rs.close()
-        preparedStatement.close()
-        connection.close()
-        return transactions;
+    fun getTransactionsBetween(username: String, startDate: Calendar,
+                               endDate: Calendar): List<DatabaseTransactionModel> {
+        val transactions = getTransactions(username)
+        return transactions.filter { (it.date.after(startDate) || it.date == startDate) && (it.date.before(endDate) && it.date != endDate) }.sortedByDescending { it.date }
     }
 
     /**
-     * Retrieves a list of transactions from the database that occurred before the given date.
+     * Retrieves a list of transactions from the database that occurred after a specific date for a given user.
      *
-     * This method connects to the database, executes an SQL query to retrieve transactions with a date less than or equal to the given date,
-     * and converts the retrieved data into a list of Transaction objects.
-     *
-     * @param date The date to retrieve transactions before.
-     * @return The list of transactions that occurred before the given date.
+     * @param username The username of the user.
+     * @param date The calendar date representing the starting point (inclusive) for the transactions.
+     * @return The list of DatabaseTransactionModel objects representing the transactions that occurred after the specified date for the given user.
      */
-    fun getTransactionsBefore(date: Calendar): List<DatabaseTransactionModel> {
-        val databaseTransactionModels = mutableListOf<DatabaseTransactionModel>()
+    fun getTransactionsAfter(username: String, date: Calendar): List<DatabaseTransactionModel> {
+        val transactions = getTransactions(username)
+        return transactions.filter { it.date.after(date) || it.date == date }.sortedByDescending { it.date }
+    }
+
+    /**
+     * Retrieves a list of transactions from the database that occurred before a specific date for a given user.
+     *
+     * @param username The username of the user.
+     * @param date The calendar date representing the upper bound (exclusive) of the date range of the transactions.
+     * @return The list of Database*/
+    fun getTransactionsBefore(username: String, date: Calendar): List<DatabaseTransactionModel> {
+        val transactions = getTransactions(username)
+        return transactions.filter { it.date.before(date) || it.date == date }.sortedByDescending { it.date }
+    }
+
+    /**
+     * Retrieves a list of all transactions from the database.
+     *
+     * @return The list of [DatabaseTransactionModel] objects representing the transactions.
+     */
+    fun getTransactions(): List<DatabaseTransactionModel> {
         val connection = getConnection()
         val preparedStatement = connection.prepareStatement(
-            "SELECT description, credit, debit, date FROM transactions WHERE date <= ? ORDER BY date DESC"
+            "SELECT date, username, description, credit, debit FROM transactions"
         )
-        preparedStatement.setString(1, calendarToSqlDate(date).toString())
         val rs = preparedStatement.executeQuery()
+        val transactions = mutableListOf<DatabaseTransactionModel>()
         while (rs.next()) {
-            databaseTransactionModels.add(
+            transactions.add(
                 DatabaseTransactionModel(
                     sqlDateToCalendar(rs.getString("date")),
+                    rs.getString("username"),
                     rs.getString("description"),
-                    rs.getDouble("credit"),
-                    rs.getDouble("debit")
+                    rs.getString("credit").toDoubleOrNull() ?: 0.0,
+                    rs.getString("debit").toDoubleOrNull() ?: 0.0
                 )
             )
         }
         rs.close()
         preparedStatement.close()
         connection.close()
-        return databaseTransactionModels;
+        return transactions
     }
 
     /**
-     * Retrieves a list of transactions from the database.
+     * Retrieves a list of transactions from the database for the given username.
      *
-     * This method retrieves transactions from the database by executing an SQL query to select all rows from the "transactions" table.
-     * The retrieved data is then converted into a list of Transaction objects.
-     *
-     * @return The list of transactions found in the database.
+     * @param username The username for which to retrieve the transactions.
+     * @return The list of DatabaseTransactionModel objects representing the transactions.
      */
-    fun getTransactions() : List<DatabaseTransactionModel> {
-        val databaseTransactionModels = mutableListOf<DatabaseTransactionModel>()
+    fun getTransactions(username: String): List<DatabaseTransactionModel> {
         val connection = getConnection()
         val preparedStatement = connection.prepareStatement(
-            "SELECT date, description, credit, debit FROM transactions ORDER BY date DESC"
+            "SELECT date, username, description, credit, debit FROM transactions WHERE username = ?"
         )
+        preparedStatement.setString(1, encrypt(username))
         val rs = preparedStatement.executeQuery()
-        while (rs.next()) {
-            databaseTransactionModels.add(
-                DatabaseTransactionModel(
-                    sqlDateToCalendar(rs.getString("date")),
-                    rs.getString("description"),
-                    rs.getDouble("credit"),
-                    rs.getDouble("debit")
-                )
-            )
-        }
-        return databaseTransactionModels
+        val transactions = getTransactionsFromResultSet(rs)
+        rs.close()
+        preparedStatement.close()
+        connection.close()
+        return transactions
     }
 
     /**
-     * Adds a transaction to the database.
+     * Adds a transaction to the database with the provided details.
      *
      * @param date The date of the transaction.
+     * @param username The username of the user who made the transaction.
      * @param description The description of the transaction.
-     * @param credit The amount of credit for the transaction. Can be null if there is no credit.
-     * @param debit The amount of debit for the transaction. Can be null if there is no debit.
+     * @param credit The amount credited in the transaction, or null if no credit amount.
+     * @param debit The amount debited in the transaction, or null if no debit amount.
      */
-    fun addTransaction(date: Calendar, description: String, credit: Double?, debit: Double?) {
+    fun addTransaction(date: Calendar, username: String, description: String, credit: Double?, debit: Double?) {
         val connection = getConnection()
         val preparedStatement = connection.prepareStatement(
-            "INSERT INTO transactions (id, date, description, credit, debit) " +
-                    "VALUES (NULL, ?, ?, ?, ?)"
+            "INSERT INTO transactions (id, username, date, description, credit, debit) " +
+                    "VALUES (NULL, ?, ?, ?, ?, ?)"
         )
-        preparedStatement.setString(1, format.format(date.time))
-        preparedStatement.setString(2, description)
-        //SET Credit
-        if(credit != null) {
-            preparedStatement.setDouble(3, credit)
+        preparedStatement.setString(1, encrypt(username))
+        preparedStatement.setString(2, encrypt(calendarToSqlDate(date).toString()))
+        preparedStatement.setString(3, encrypt(description))
+
+        // SET Credit
+        if (credit != null) {
+            preparedStatement.setString(4, encrypt(credit.toString()))
         } else {
-            preparedStatement.setNull(3, java.sql.Types.DOUBLE)
+            preparedStatement.setNull(4, java.sql.Types.VARCHAR)
         }
-        //SET Debit
+
+        // SET Debit
         if (debit != null) {
-            preparedStatement.setDouble(4, debit)
+            preparedStatement.setString(5, encrypt(debit.toString()))
         } else {
-            preparedStatement.setNull(4, java.sql.Types.DOUBLE)
+            preparedStatement.setNull(5, java.sql.Types.VARCHAR)
         }
 
         preparedStatement.executeUpdate()
-
         preparedStatement.close()
         connection.close()
     }
@@ -189,18 +261,16 @@ class DatabaseManager {
     /**
      * Uploads a list of transactions to the database.
      *
-     * @param databaseTransactionModels The list of transactions to be uploaded.
-     *                     Each transaction should have a date, description, debit amount (optional), and credit amount (optional).
-     *                     If a transaction with the same date and description already exists in the database,
-     *                     it will not be uploaded again.
-     *                     The function uses the getTransactions() method to check if a transaction already exists
-     *                     and the addTransaction() method to add new transactions to the database.
+     * @param databaseTransactionModels The list of transactions to upload.
      */
     fun uploadTransactions(databaseTransactionModels: List<DatabaseTransactionModel>) {
         for (transaction in databaseTransactionModels) {
-            if(getTransactions(transaction.date, transaction.description) == null) {
+            val count1 = transactionCount(transaction)
+            val count2 = databaseTransactionModels.count { it == transaction }
+            if ( count1 < count2) {
                 addTransaction(
                     transaction.date,
+                    transaction.username,
                     transaction.description,
                     transaction.credit,
                     transaction.debit
@@ -210,68 +280,87 @@ class DatabaseManager {
     }
 
     /**
-     * Retrieves a database connection.
-     *
-     * This method returns a Connection object that represents a connection to the database.
-     * The Connection object can be used to execute SQL queries and perform transactions on the database.
-     *
-     * @return The Connection object for the database.
-     */
+     * Retrieves a connection to the*/
     private fun getConnection(): java.sql.Connection {
-        return com.plaglefleau.budgetdesktop.database.Connexion().getConnection()
+        return DatabaseManager.getConnection()
     }
 
     /**
-     * Converts a SQL Date object to a Calendar object.
+     * Converts a SQL date string to a Calendar object.
      *
-     * @param sqlDate The SQL Date object to convert.
-     * @return The converted Calendar object.
-     */
+     * @param sqlDate The SQL date string to*/
     private fun sqlDateToCalendar(sqlDate: String): Calendar {
-        val dateFormat = SimpleDateFormat("yyyy-MM-dd")
         val calendar = Calendar.getInstance()
-        calendar.time = dateFormat.parse(sqlDate)
+        calendar.time = format.parse(sqlDate)
         return calendar
     }
 
     /**
-     * Converts a Calendar object to a SQL Date object.
+     * Converts a Calendar object to a java.sql.Date object.
      *
-     * This function takes a Calendar object and converts it to a SQL Date object by using the time in milliseconds from
-     * the Calendar object. The resulting SQL Date object represents the same date and time as the Calendar object.
-     *
-     * @param calendar The Calendar object to convert to a SQL Date.
-     * @return The converted SQL Date object.
+     * @param calendar The Calendar object to be converted.
+     * @return The java.sql.Date object representing the date from the Calendar.
      */
     private fun calendarToSqlDate(calendar: Calendar): Date {
-        // Use the time in milliseconds from the Calendar object
-        val millis = calendar.timeInMillis
-        return Date(millis)
+        return Date(calendar.timeInMillis)
     }
 
     /**
-     * Retrieves a list of DatabaseTransactionModel objects from a ResultSet object.
+     * Retrieves a list of transactions from the given ResultSet.
      *
-     * This function takes a ResultSet object representing the result of an SQL query and converts the retrieved data into a list of DatabaseTransactionModel objects.
-     * The ResultSet object is expected to have the columns "date", "description", "credit", and "debit".
-     * For each row in the ResultSet, a new DatabaseTransactionModel object is created with the corresponding values from the ResultSet columns.
-     * The newly created DatabaseTransactionModel objects are added to a list, which is then returned.
-     *
-     * @param rs The ResultSet object containing the retrieved data.
-     * @return The list of DatabaseTransactionModel objects.
+     * @param rs The ResultSet containing the transactions.
+     * @return The list of DatabaseTransactionModel objects representing the transactions.
      */
     private fun getTransactionsFromResultSet(rs: ResultSet): List<DatabaseTransactionModel> {
         val transactions = mutableListOf<DatabaseTransactionModel>()
         while (rs.next()) {
+            val date = decrypt(rs.getString("date"))
             transactions.add(
                 DatabaseTransactionModel(
-                    sqlDateToCalendar(rs.getString("date")),
-                    rs.getString("description"),
-                    rs.getDouble("credit"),
-                    rs.getDouble("debit")
+                    sqlDateToCalendar(date),
+                    decrypt(rs.getString("username")),
+                    decrypt(rs.getString("description")),
+                    decrypt(
+                        rs.getString("credit")?:
+                        Base64.getEncoder().encodeToString(
+                            "0.0".toByteArray()
+                        )
+                    ).toDouble(),
+                    decrypt(
+                        rs.getString("debit")?:
+                        Base64.getEncoder().encodeToString(
+                            "0.0".toByteArray()
+                        )
+                    ).toDouble()
                 )
             )
         }
-        return transactions;
+        return transactions
+    }
+
+    /**
+     * Decrypts the provided data using AES encryption with the given key.
+     *
+     * @param data The encrypted data to be decrypted.
+     * @return The decrypted data as a string. If decryption fails, returns "0.0".
+     */
+    private fun decrypt(data: String): String {
+        return EncryptManager.decrypt(
+            data,
+            EncryptManager.getKeyFromString(key, 16)
+        )
+    }
+
+    /**
+     * Encrypts the provided data using AES encryption with the given key.
+     *
+     * @param data The data to be encrypted.
+     * @return The encrypted data as a string.
+     */
+    private fun encrypt(data: String): String {
+        return EncryptManager.encrypt(
+            data,
+            EncryptManager.getKeyFromString(key, 16)
+        )
     }
 }

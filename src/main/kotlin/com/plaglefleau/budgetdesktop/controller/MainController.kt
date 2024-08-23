@@ -1,6 +1,7 @@
-package com.plaglefleau.budgetdesktop
+package com.plaglefleau.budgetdesktop.controller
 
 import com.plaglefleau.budgetdesktop.database.models.DatabaseTransactionModel
+import com.plaglefleau.budgetdesktop.database.models.User
 import com.plaglefleau.budgetdesktop.managers.DatabaseManager
 import com.plaglefleau.budgetdesktop.managers.TransactionManager
 import javafx.beans.property.SimpleStringProperty
@@ -19,10 +20,11 @@ import java.text.DecimalFormat
 import java.text.SimpleDateFormat
 import java.time.LocalDate
 import java.util.*
+import kotlin.math.log
 import kotlin.reflect.full.memberProperties
 import kotlin.system.exitProcess
 
-class MainController : Initializable {
+class MainController {
 
 
     lateinit var databaseTransactionModelTableView: TableView<DatabaseTransactionModel>
@@ -39,12 +41,23 @@ class MainController : Initializable {
 
     private lateinit var toggleGroup: ToggleGroup
 
-    private val databaseManager = DatabaseManager()
+    private var databaseManager: DatabaseManager = DatabaseManager("")
     private val transactionManager = TransactionManager()
 
-    var primaryStage: Stage? = null
+    private var login: User = User("","")
+    private var primaryStage: Stage? = null
 
-    override fun initialize(url: URL?, resource: ResourceBundle?) {
+    fun setupData(login: User, primaryStage: Stage) {
+        this.login = login
+        databaseManager = DatabaseManager(login.password)
+        this.primaryStage = primaryStage
+
+        primaryStage.minWidth = 1000.0
+        primaryStage.minHeight = 600.0
+        primaryStage.height = 600.0
+        primaryStage.width = 1000.0
+        primaryStage.isResizable = true
+
         val transactionList = getTransactions()
         setColumns(databaseTransactionModelTableView, DatabaseTransactionModel::class)
         databaseTransactionModelTableView.items.setAll(transactionList)
@@ -55,7 +68,6 @@ class MainController : Initializable {
         showAll.isSelected = true
 
         setupListeners()
-
     }
 
     private fun setupListeners() {
@@ -71,7 +83,7 @@ class MainController : Initializable {
             val chosenFile = fileChooser.showOpenDialog(primaryStage)
 
             if (chosenFile != null) {
-                val transactions = transactionManager.parseTransactions(chosenFile)
+                val transactions = transactionManager.parseTransactions(chosenFile, login.username)
                 databaseManager.uploadTransactions(transactions)
                 databaseTransactionModelTableView.items = getFilteredList()
                 setTotalCreditDebitAndFluctuation()
@@ -136,17 +148,20 @@ class MainController : Initializable {
 
     private fun getTransactionsBasedOnSelectedDate() : List<DatabaseTransactionModel> {
         return if (afterDatePicker.value == null && beforeDatePicker.value == null) {
-            databaseManager.getTransactions()
+            databaseManager.getTransactions(login.username)
         } else if (afterDatePicker.value == null && beforeDatePicker.value != null) {
             databaseManager.getTransactionsBefore(
+                login.username,
                 calendarFromLocalDate(beforeDatePicker.value)
             )
         } else if (afterDatePicker.value != null && beforeDatePicker.value == null) {
             databaseManager.getTransactionsAfter(
+                login.username,
                 calendarFromLocalDate(afterDatePicker.value)
             )
         } else {
             databaseManager.getTransactionsBetween(
+                login.username,
                 calendarFromLocalDate(beforeDatePicker.value),
                 calendarFromLocalDate(afterDatePicker.value)
             )
@@ -202,11 +217,14 @@ class MainController : Initializable {
                     tableView.columns.add(column)
                 }
                 String::class -> {
-                    column.cellValueFactory = Callback { cellData ->
-                        val value = prop.get(cellData.value) as? String
-                        SimpleStringProperty(value!!.replace("\n", "").replace("\r", "").replace("\"","").replace(Regex("\\s+"), " ").trim())
+
+                    if(prop.name != "username") {
+                        column.cellValueFactory = Callback { cellData ->
+                            val value = prop.get(cellData.value) as? String
+                            SimpleStringProperty(value!!.replace("\n", "").replace("\r", "").replace("\"","").replace(Regex("\\s+"), " ").trim())
+                        }
+                        tableView.columns.add(column)
                     }
-                    tableView.columns.add(column)
                 }
                 else -> {
                     column.cellValueFactory = PropertyValueFactory<T, String>(prop.name)

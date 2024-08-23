@@ -13,11 +13,17 @@ class Connexion {
         statement.executeUpdate("""
             CREATE TABLE IF NOT EXISTS transactions (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                date DATE NOT NULL,
+                username VARCHAR(255) NOT NULL,
+                date VARCHAR(255) NOT NULL,
                 description TEXT NOT NULL,
-                credit DOUBLE,
-                debit DOUBLE
-            )
+                credit VARCHAR(255),
+                debit VARCHAR(255)
+            );
+            
+            CREATE TABLE IF NOT EXISTS users (
+                username VARCHAR(25) NOT NULL,
+                password VARCHAR(255) NOT NULL
+            );
         """)
     }
 

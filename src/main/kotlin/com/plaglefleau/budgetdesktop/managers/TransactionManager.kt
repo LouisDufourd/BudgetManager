@@ -15,8 +15,8 @@ class TransactionManager {
      * @param filePath The path of the file to parse.
      * @return A list of parsed transactions.
      */
-    fun parseTransactions(filePath: Path): List<DatabaseTransactionModel> {
-        return parseTransactions(filePath.toFile())
+    fun parseTransactions(filePath: Path, username: String): List<DatabaseTransactionModel> {
+        return parseTransactions(filePath.toFile(), username)
     }
 
     /**
@@ -25,11 +25,11 @@ class TransactionManager {
      * @param file The file to parse.
      * @return A list of parsed transactions.
      */
-    fun parseTransactions(file: File): List<DatabaseTransactionModel> {
+    fun parseTransactions(file: File, username: String): List<DatabaseTransactionModel> {
 
         val rawData = file.readText(Charset.forName("Cp1252"))
 
-        return parseTransactions(rawData)
+        return parseTransactions(rawData, username)
     }
 
     /**
@@ -37,7 +37,7 @@ class TransactionManager {
      *
      * @param rawData The raw data string containing transaction information.
      **/
-    fun parseTransactions(rawData: String): List<DatabaseTransactionModel> {
+    fun parseTransactions(rawData: String, username: String): List<DatabaseTransactionModel> {
 
         val databaseTransactionModels = mutableListOf<DatabaseTransactionModel>()
 
@@ -75,11 +75,6 @@ class TransactionManager {
                         .replace("\r", "")
                         .replace(",", ".")
                         .toDoubleOrNull()
-                    /*println("date[${i / 4}] : $date")
-                    println("description[${i / 4}] : $description")
-                    println("debit[${i / 4}] : $credit")
-                    println("credit[${i / 4}] : $debit")
-                    println()*/
 
                     if(date == null) {
                         i++
@@ -89,6 +84,7 @@ class TransactionManager {
                     databaseTransactionModels.add(
                         DatabaseTransactionModel(
                             date = date,
+                            username = username,
                             description = description,
                             debit = debit,
                             credit = credit
