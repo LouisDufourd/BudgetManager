@@ -218,8 +218,8 @@ class MainController {
         } else {
             databaseManager.getTransactionsBetween(
                 login.username,
-                calendarFromLocalDate(beforeDatePicker.value),
-                calendarFromLocalDate(afterDatePicker.value)
+                calendarFromLocalDate(afterDatePicker.value),
+                calendarFromLocalDate(beforeDatePicker.value)
             )
         }
     }
