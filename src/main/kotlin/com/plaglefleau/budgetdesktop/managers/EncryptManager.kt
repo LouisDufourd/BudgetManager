@@ -1,14 +1,11 @@
 package com.plaglefleau.budgetdesktop.managers
 
-import java.security.Key
 import java.security.MessageDigest
 import java.util.*
 import javax.crypto.Cipher
-import javax.crypto.KeyGenerator
 import javax.crypto.Mac
 import javax.crypto.SecretKey
 import javax.crypto.spec.SecretKeySpec
-import javax.crypto.spec.IvParameterSpec
 
 class EncryptManager {
     companion object {

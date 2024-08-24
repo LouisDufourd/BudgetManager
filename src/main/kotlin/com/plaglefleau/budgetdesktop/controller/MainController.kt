@@ -7,20 +7,17 @@ import com.plaglefleau.budgetdesktop.managers.TransactionManager
 import javafx.beans.property.SimpleStringProperty
 import javafx.collections.FXCollections
 import javafx.collections.ObservableList
-import javafx.fxml.Initializable
 import javafx.scene.control.*
 import javafx.scene.control.cell.PropertyValueFactory
 import javafx.stage.FileChooser
 import javafx.stage.Stage
 import javafx.util.Callback
 import java.io.File
-import java.net.URL
 import java.nio.file.Paths
 import java.text.DecimalFormat
 import java.text.SimpleDateFormat
 import java.time.LocalDate
 import java.util.*
-import kotlin.math.log
 import kotlin.reflect.full.memberProperties
 import kotlin.system.exitProcess
 

@@ -1,7 +1,6 @@
 package com.plaglefleau.budgetdesktop
 
 import com.plaglefleau.budgetdesktop.controller.LoginController
-import com.plaglefleau.budgetdesktop.database.Connexion
 import javafx.application.Application
 import javafx.application.Application.launch
 import javafx.fxml.FXMLLoader
