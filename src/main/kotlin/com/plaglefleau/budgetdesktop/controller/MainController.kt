@@ -23,7 +23,6 @@ import kotlin.system.exitProcess
 
 class MainController {
 
-
     lateinit var databaseTransactionModelTableView: TableView<DatabaseTransactionModel>
     lateinit var fluctuationTextField: TextField
     lateinit var totalCreditTextField: TextField
@@ -44,6 +43,12 @@ class MainController {
     private var login: User = User("","")
     private var primaryStage: Stage? = null
 
+    /**
+     * Sets up the data for the application.
+     *
+     * @param login The user's login information.
+     * @param primaryStage The main stage of the application.
+     */
     fun setupData(login: User, primaryStage: Stage) {
         this.login = login
         databaseManager = DatabaseManager(login.password)
@@ -67,6 +72,19 @@ class MainController {
         setupListeners()
     }
 
+    /**
+     * Sets up the listeners for the UI components.
+     *
+     * - The selected toggle property of the toggle group is listened, and when it changes, the filtered list of transactions is updated in the databaseTransactionModelTableView.
+     * - The loadFileButton's setOnAction event is listened, and when triggered, a file chooser dialog is opened to choose a CSV file. If a file is chosen, the transactions are parsed
+     *  from the file and uploaded to the database. The filtered list of transactions is then updated in the databaseTransactionModelTableView, and the total credit, debit, and fluct
+     * uation values are updated.
+     * - The quitButton's setOnAction event is listened, and when triggered, the application is exited.
+     * - The beforeDatePicker's setOnAction event is listened, and when triggered, the filtered list of transactions is updated in the databaseTransactionModelTableView, and the total
+     *  credit, debit, and fluctuation values are updated.
+     * - The afterDatePicker's setOnAction event is listened, and when triggered, the filtered list of transactions is updated in the databaseTransactionModelTableView, and the total
+     *  credit, debit, and fluctuation values are updated.
+     */
     private fun setupListeners() {
         toggleGroup.selectedToggleProperty().addListener { _, _, _ ->
             databaseTransactionModelTableView.items = getFilteredList()
@@ -102,10 +120,25 @@ class MainController {
         }
     }
 
+    /**
+     * Retrieves the filtered list of transactions to display in the UI.
+     *
+     * This method retrieves the list of transactions using the getTransactions() method. It then filters the list based on the selected toggle in the toggle group. If onlyCredits
+     *  is selected, it filters the transactions to include only those with a non-zero credit and zero debit. If onlyDebits is selected, it filters the transactions to include only
+     *  those with a non-zero debit and zero credit. Otherwise, it returns the original list of transactions. The filtered list is then wrapped in an ObservableList using the FXCollections
+     * .observableArrayList() method and returned.
+     *
+     * @return The filtered list of transactions as an ObservableList.
+     */
     private fun getFilteredList(): ObservableList<DatabaseTransactionModel> {
         return FXCollections.observableArrayList(getTransactions())
     }
 
+    /**
+     * Retrieves the Downloads folder for the current user.
+     *
+     * @return The File object representing the Downloads folder, or null if it does not exist or is not a directory.
+     */
     private fun getDownloadsFolder(): File? {
         // Determine the user's Downloads directory
         val userHome = System.getProperty("user.home")
@@ -119,12 +152,25 @@ class MainController {
         }
     }
 
+    /**
+     * Converts a LocalDate object to a Calendar object.
+     *
+     * @param localeDate The LocalDate object to convert.
+     * @return The converted Calendar object.
+     */
     private fun calendarFromLocalDate(localeDate: LocalDate): Calendar {
         val calendar = Calendar.getInstance()
         calendar.time = Date.from(localeDate.atStartOfDay(calendar.timeZone.toZoneId()).toInstant())
         return calendar
     }
 
+    /**
+     * Calculates and sets the total credit, debit, and fluctuation values based on the transactions retrieved
+     * from the getTransactionsBasedOnSelectedDate() method. The total credit and debit values are calculated
+     * by summing the credit and debit amounts of each transaction, respectively. The fluctuation value is
+     * calculated by subtracting the total debit from the total credit. The decimal format "#0.00€" is used to
+     * format the values before setting them in the corresponding text fields.
+     */
     private fun setTotalCreditDebitAndFluctuation() {
         val decimalFormat = DecimalFormat("#0.00€")
 
@@ -143,6 +189,19 @@ class MainController {
         fluctuationTextField.text = decimalFormat.format(totalCredit - totalDebit)
     }
 
+    /**
+     * Retrieves a list of transactions based on the selected date criteria.
+     *
+     * This method retrieves the transactions from the database using the databaseManager.
+     * It checks the beforeDatePicker and afterDatePicker values to determine the date range.
+     * If both values are null, it retrieves all transactions for the given username.
+     * If only the beforeDatePicker value is not null, it retrieves transactions that occurred before the specified date.
+     * If only the afterDatePicker value is not null, it retrieves transactions that occurred after the specified date.
+     * If both values are not null, it retrieves transactions that fall between the specified dates.
+     * The returned list of transactions is of type List<DatabaseTransactionModel>.
+     *
+     * @return The list of transactions based on the selected date criteria.
+     */
     private fun getTransactionsBasedOnSelectedDate() : List<DatabaseTransactionModel> {
         return if (afterDatePicker.value == null && beforeDatePicker.value == null) {
             databaseManager.getTransactions(login.username)
@@ -165,6 +224,13 @@ class MainController {
         }
     }
 
+    /**
+     * Retrieves a list of transactions based on the selected date criteria.
+     *
+     * This method retrieves the transactions from the database using the databaseManager.
+     * It checks the beforeDatePicker and afterDatePicker values to determine the date range.
+     * If both values are null, it retrieves all transactions for the given username.
+     * If only the beforeDatePicker*/
     private fun getTransactions(): List<DatabaseTransactionModel> {
         val transactions = getTransactionsBasedOnSelectedDate()
 
@@ -181,6 +247,13 @@ class MainController {
         }
     }
 
+    /**
+     * Clears the existing columns in the TableView and sets up new columns based on the given class type.
+     *
+     * @param tableView The TableView on which to set up the columns.
+     * @param kClass The Kotlin class representing the type of the TableView items.
+     * @param <T> The type of the TableView items.
+     */
     private fun <T : Any> setColumns(tableView: TableView<T>, kClass: kotlin.reflect.KClass<T>) {
         tableView.columns.clear()
         kClass.memberProperties.forEach { prop ->

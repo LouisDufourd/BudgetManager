@@ -27,6 +27,11 @@ class Connexion {
         """)
     }
 
+    /**
+     * Retrieves a connection to the database.
+     *
+     * @return The connection to the database.
+     */
     fun getConnection(): Connection {
         val userHome = System.getProperty("user.home")
         val documentsPath = "${userHome + File.separator}Documents"

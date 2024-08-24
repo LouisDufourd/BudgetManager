@@ -20,7 +20,27 @@ class LoginController: Initializable {
     lateinit var usernameTextField: TextField
     var primaryStage: Stage? = null
 
-    @FXML
+
+    /**
+     * Initializes the LoginController.
+     *
+     * This method is called after the FXML file has been loaded and the fields have been injected.
+     * It sets up the event handler for the loginButton's setOnMouseClicked event.
+     * When the loginButton is clicked, it performs the following actions:
+     *   - Validates the username and password fields. If either field is empty, an error message is shown.
+     *   - Validates the length of the username field. If it exceeds 25 characters, an error message is shown.
+     *   - Calls the login method from the DatabaseManager to check if the provided username and password are correct.
+     *   - If the login is successful, a confirmation message is shown asking the user to continue.
+     *   - If the user cancels the confirmation, the username and password fields are cleared.
+     *   - If the user accepts the confirmation, a new User object is created with the provided username and password.
+     *   - Loads the main.fxml file using FXMLLoader, sets it as the root of the primaryStage's scene, and shows the primaryStage.
+     *   - Gets the controller for the main.fxml file and calls the setupData method to pass the User object and primaryStage to it.
+     *   - If the login is unsuccessful, an error message is shown.
+     *   - The username and password fields are cleared in both cases.
+     *
+     * @param url           The location used to resolve relative paths for the root object, or null if the location is not known.
+     * @param resourceBundle The resources used to localize the root object, or null if the root object was not localized.
+     */
     override fun initialize(url: URL?, resourceBundle: ResourceBundle?) {
 
         Connexion()

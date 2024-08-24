@@ -41,6 +41,13 @@ class EncryptManager {
             return Base64.getEncoder().encodeToString(hashBytes)
         }
 
+        /**
+         * Encrypts the provided data using AES encryption with the given key.
+         *
+         * @param data The data to be encrypted.
+         * @param key The SecretKey to be used for encryption.
+         * @return The encrypted data as a string.
+         */
         fun encrypt(data: String, key: SecretKey): String {
             val cipher = Cipher.getInstance("AES")
             cipher.init(Cipher.ENCRYPT_MODE, key)
@@ -48,6 +55,13 @@ class EncryptManager {
             return Base64.getEncoder().encodeToString(encryptedBytes)
         }
 
+        /**
+         * Decrypts the provided data using AES encryption with the given key.
+         *
+         * @param encryptedData The encrypted data to be decrypted.
+         * @param key The secret key for decryption.
+         * @return The decrypted data as a string. If decryption fails, returns "0.0".
+         */
         fun decrypt(encryptedData: String, key: SecretKey): String {
             val cipher = Cipher.getInstance("AES")
             cipher.init(Cipher.DECRYPT_MODE, key)
