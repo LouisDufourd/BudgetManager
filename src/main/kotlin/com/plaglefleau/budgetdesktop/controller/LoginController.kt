@@ -1,20 +1,29 @@
 package com.plaglefleau.budgetdesktop.controller
 
-import com.plaglefleau.budgetdesktop.database.Connexion
+import com.plaglefleau.budgetdesktop.Language
 import com.plaglefleau.budgetdesktop.database.models.User
 import com.plaglefleau.budgetdesktop.managers.DatabaseManager
-import javafx.fxml.FXML
+import com.plaglefleau.translate.Translation
+import javafx.event.ActionEvent
 import javafx.fxml.FXMLLoader
 import javafx.fxml.Initializable
 import javafx.scene.Parent
 import javafx.scene.Scene
 import javafx.scene.control.*
+import javafx.scene.layout.AnchorPane
+import javafx.scene.layout.GridPane
+import javafx.scene.layout.VBox
 import javafx.stage.Stage
 import java.net.URL
 import java.util.*
+import java.util.stream.Collectors
 
 class LoginController: Initializable {
 
+    lateinit var loginGrid: GridPane
+    lateinit var anchorPane: AnchorPane
+    lateinit var usernameLabel: Label
+    lateinit var passwordLabel: Label
     lateinit var loginButton: Button
     lateinit var passwordTextField: PasswordField
     lateinit var usernameTextField: TextField
@@ -42,47 +51,62 @@ class LoginController: Initializable {
      * @param resourceBundle The resources used to localize the root object, or null if the root object was not localized.
      */
     override fun initialize(url: URL?, resourceBundle: ResourceBundle?) {
+        updateLang()
 
-        loginButton.setOnMouseClicked {
-            if(usernameTextField.text.isEmpty() || passwordTextField.text.isEmpty()) {
-                Alert(Alert.AlertType.ERROR, "Please enter your username and password").showAndWait()
-                return@setOnMouseClicked
-            }
-            if(usernameTextField.text.length > 25) {
-                Alert(Alert.AlertType.ERROR, "Your username length can't be inferior to 25").showAndWait()
-                return@setOnMouseClicked
-            }
-            if(DatabaseManager.login(usernameTextField.text, passwordTextField.text)) {
-                val result = Alert(Alert.AlertType.CONFIRMATION).apply {
-                    title = "Confirmation"
-                    headerText = "Are you sure you want to continue?"
-                    contentText = "Are you sure that you want to login with this username \"${usernameTextField.text}\" ?"
-
-                }.showAndWait()
-
-                if(!result.isPresent && result.get() != ButtonType.OK) {
-                    usernameTextField.text = ""
-                    passwordTextField.text = ""
-                    return@setOnMouseClicked
-                }
-
-                val user = User(usernameTextField.text, passwordTextField.text)
-
-                val fxmlLoader = FXMLLoader()
-                fxmlLoader.location = javaClass.getResource("/fxml/main.fxml")
-                val root:Parent = fxmlLoader.load()
-
-                primaryStage!!.scene = Scene(root)
-                primaryStage!!.show()
-
-                val mainController = fxmlLoader.getController<MainController>()
-                mainController.setupData(user, primaryStage!!)
-
-            } else {
-                Alert(Alert.AlertType.ERROR, "Your username or password is incorrect").showAndWait()
-                usernameTextField.text = ""
-                passwordTextField.text = ""
-            }
+        loginButton.setOnAction { event ->
+            loginButtonOnAction(event)
         }
+    }
+
+    private fun loginButtonOnAction(event: ActionEvent) {
+        val translation = Language.translation
+
+        val result = Alert(Alert.AlertType.CONFIRMATION).apply {
+            title = translation.getTraduction(Language.lang, "text.confirmation.title")
+            headerText = translation.getTraduction(Language.lang, "text.confirmation.header")
+            contentText = translation.getTraduction(Language.lang, "text.confirmation.content").replace("{username}", usernameTextField.text)
+
+        }.showAndWait()
+
+        if (!result.isPresent || result.get() != ButtonType.OK) {
+            usernameTextField.text = ""
+            passwordTextField.text = ""
+            return
+        }
+
+        if(usernameTextField.text.isEmpty() || passwordTextField.text.isEmpty()) {
+            Alert(Alert.AlertType.ERROR, translation.getTraduction(Language.lang, "text.loginError")).showAndWait()
+            return
+        }
+        if(usernameTextField.text.length > 25) {
+            Alert(Alert.AlertType.ERROR, translation.getTraduction(Language.lang, "text.usernameSizeError")).showAndWait()
+            return
+        }
+        if(DatabaseManager.login(usernameTextField.text, passwordTextField.text)) {
+
+            val user = User(usernameTextField.text, passwordTextField.text)
+
+            val fxmlLoader = FXMLLoader()
+            fxmlLoader.location = javaClass.getResource("/fxml/main.fxml")
+            val root:Parent = fxmlLoader.load()
+
+            primaryStage!!.scene = Scene(root)
+            primaryStage!!.show()
+
+            val mainController = fxmlLoader.getController<MainController>()
+            mainController.setupData(user, primaryStage!!)
+
+        } else {
+            Alert(Alert.AlertType.ERROR, translation.getTraduction(Language.lang, "text.badLoginError")).showAndWait()
+            usernameTextField.text = ""
+            passwordTextField.text = ""
+        }
+    }
+
+    private fun updateLang() {
+        val translation = Language.translation
+        usernameLabel.text = translation.getTraduction(Language.lang, "text.username")
+        passwordLabel.text = translation.getTraduction(Language.lang, "text.password")
+        loginButton.text = translation.getTraduction(Language.lang, "text.login")
     }
 }

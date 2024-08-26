@@ -9,10 +9,14 @@ plugins {
 }
 
 group 'com.plaglefleau'
-version '1.3.1'
+version '1.3.3'
 
 repositories {
     mavenCentral()
+
+    flatDir {
+        dirs("libs")
+    }
 }
 
 ext {
@@ -48,6 +52,9 @@ dependencies {
 
     implementation("org.jetbrains.kotlin:kotlin-reflect:1.9.0")
     implementation("org.xerial:sqlite-jdbc:3.42.0.0")
+    implementation(":TranslationLibrary-1.0.0")
+    implementation("com.google.code.gson:gson:2.11.0")
+    implementation("org.jetbrains:annotations:24.1.0")
     testImplementation("org.junit.jupiter:junit-jupiter-api:${junitVersion}")
     testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:${junitVersion}")
 }

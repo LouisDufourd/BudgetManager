@@ -1,5 +1,6 @@
 package com.plaglefleau.budgetdesktop.controller
 
+import com.plaglefleau.budgetdesktop.Language
 import com.plaglefleau.budgetdesktop.database.models.DatabaseTransactionModel
 import com.plaglefleau.budgetdesktop.database.models.User
 import com.plaglefleau.budgetdesktop.managers.DatabaseManager
@@ -9,6 +10,7 @@ import javafx.collections.FXCollections
 import javafx.collections.ObservableList
 import javafx.scene.control.*
 import javafx.scene.control.cell.PropertyValueFactory
+import javafx.scene.layout.VBox
 import javafx.stage.FileChooser
 import javafx.stage.Stage
 import javafx.util.Callback
@@ -23,6 +25,14 @@ import kotlin.system.exitProcess
 
 class MainController {
 
+    lateinit var editMenu: Menu
+    lateinit var fileMenu: Menu
+    lateinit var remainingLabel: Label
+    lateinit var creditLabel: Label
+    lateinit var debitLabel: Label
+    lateinit var afterLabel: Label
+    lateinit var beforeLabel: Label
+    lateinit var mainVBox: VBox
     lateinit var databaseTransactionModelTableView: TableView<DatabaseTransactionModel>
     lateinit var fluctuationTextField: TextField
     lateinit var totalCreditTextField: TextField
@@ -52,12 +62,13 @@ class MainController {
     fun setupData(login: User, primaryStage: Stage) {
         this.login = login
         databaseManager = DatabaseManager(login.username, login.password)
+
+        updateLanguage()
+
         this.primaryStage = primaryStage
 
-        primaryStage.minWidth = 1000.0
-        primaryStage.minHeight = 600.0
-        primaryStage.height = 600.0
-        primaryStage.width = 1000.0
+        primaryStage.minWidth = mainVBox.width
+        primaryStage.minHeight = mainVBox.height
         primaryStage.isResizable = true
 
         val transactionList = getTransactions()
@@ -303,5 +314,23 @@ class MainController {
             }
 
         }
+    }
+
+    private fun updateLanguage() {
+        val translation = Language.translation
+        beforeLabel.text = translation.getTraduction(Language.lang, "text.before")
+        afterLabel.text = translation.getTraduction(Language.lang, "text.after")
+        debitLabel.text = translation.getTraduction(Language.lang, "text.debit")
+        creditLabel.text = translation.getTraduction(Language.lang, "text.credit")
+        remainingLabel.text = translation.getTraduction(Language.lang, "text.remaining")
+
+        fileMenu.text = translation.getTraduction(Language.lang, "text.file")
+        loadFileButton.text = translation.getTraduction(Language.lang, "text.loadFile")
+        quitButton.text = translation.getTraduction(Language.lang, "text.quit")
+
+        editMenu.text = translation.getTraduction(Language.lang, "text.edit")
+        showAll.text = translation.getTraduction(Language.lang, "text.showAll")
+        onlyCredits.text = translation.getTraduction(Language.lang, "text.onlyCredits")
+        onlyDebits.text = translation.getTraduction(Language.lang, "text.onlyDebits")
     }
 }

@@ -4,6 +4,7 @@ open module com.plaglefleau.budgetdesktop {
     requires kotlin.stdlib;
     requires java.sql;
     requires kotlin.reflect;
+    requires TranslationLibrary;
 
     exports com.plaglefleau.budgetdesktop;
 }
