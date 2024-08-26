@@ -3,13 +3,15 @@ package com.plaglefleau.budgetdesktop.managers
 import com.plaglefleau.budgetdesktop.database.Connexion
 import com.plaglefleau.budgetdesktop.database.models.DatabaseTransactionModel
 import com.plaglefleau.budgetdesktop.database.models.User
+import java.io.File
 import java.sql.Connection
 import java.sql.Date
+import java.sql.DriverManager
 import java.sql.ResultSet
 import java.text.SimpleDateFormat
 import java.util.*
 
-class DatabaseManager(private val key: String) {
+class DatabaseManager(private val username: String, private val password: String) {
 
     private val format = SimpleDateFormat("yyyy-MM-dd")
 
@@ -21,7 +23,7 @@ class DatabaseManager(private val key: String) {
          * @param password The password of the user to register.
          */
         fun register(username: String, password: String) {
-            val connection = getConnection()
+            val connection = getConnection(username, password)
             val preparedStatement = connection.prepareStatement(
                 "INSERT INTO users (username, password) VALUES (?, ?)"
             )
@@ -93,8 +95,12 @@ class DatabaseManager(private val key: String) {
          *
          * @return The connection to the database.
          */
+        private fun getConnection(username: String, password: String): Connection {
+            return Connexion(username, password).getConnection()
+        }
+
         private fun getConnection(): Connection {
-            return Connexion().getConnection()
+            return Connexion.getConnection()
         }
     }
 
@@ -344,10 +350,10 @@ class DatabaseManager(private val key: String) {
      * @param data The encrypted data to be decrypted.
      * @return The decrypted data as a string. If decryption fails, returns "0.0".
      */
-    private fun decrypt(data: String): String {
+    fun decrypt(data: String): String {
         return EncryptManager.decrypt(
             data,
-            EncryptManager.getKeyFromString(key, 16)
+            EncryptManager.getKeyFromString(password, 16)
         )
     }
 
@@ -357,10 +363,10 @@ class DatabaseManager(private val key: String) {
      * @param data The data to be encrypted.
      * @return The encrypted data as a string.
      */
-    private fun encrypt(data: String): String {
+    fun encrypt(data: String): String {
         return EncryptManager.encrypt(
             data,
-            EncryptManager.getKeyFromString(key, 16)
+            EncryptManager.getKeyFromString(password, 16)
         )
     }
 }

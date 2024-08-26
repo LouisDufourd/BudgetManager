@@ -37,7 +37,7 @@ class MainController {
 
     private lateinit var toggleGroup: ToggleGroup
 
-    private var databaseManager: DatabaseManager = DatabaseManager("")
+    private var databaseManager: DatabaseManager = DatabaseManager("", "")
     private val transactionManager = TransactionManager()
 
     private var login: User = User("","")
@@ -51,7 +51,7 @@ class MainController {
      */
     fun setupData(login: User, primaryStage: Stage) {
         this.login = login
-        databaseManager = DatabaseManager(login.password)
+        databaseManager = DatabaseManager(login.username, login.password)
         this.primaryStage = primaryStage
 
         primaryStage.minWidth = 1000.0

@@ -1,12 +1,16 @@
 package com.plaglefleau.budgetdesktop.database
 
+import javafx.scene.control.PasswordField
 import java.io.File
 import java.sql.Connection
 import java.sql.DriverManager
+import javax.crypto.SecretKey
 
-class Connexion {
+class Connexion(username: String, password: String) {
 
     init {
+        Migrate().migrate(username, password)
+
         val connection = getConnection()
         val statement = connection.createStatement()
 
@@ -25,6 +29,9 @@ class Connexion {
                 password VARCHAR(255) NOT NULL
             );
         """)
+
+        val preparedStatement = connection.prepareStatement("PRAGMA user_version = ${DatabaseVersion.VERSION};")
+        preparedStatement.executeUpdate()
     }
 
     /**
@@ -33,12 +40,18 @@ class Connexion {
      * @return The connection to the database.
      */
     fun getConnection(): Connection {
-        val userHome = System.getProperty("user.home")
-        val documentsPath = "${userHome + File.separator}Documents"
-        val dbPath = "${documentsPath + File.separator}Budget Manager${File.separator}budget.db"
+        return Connexion.getConnection()
+    }
 
-        File(dbPath).parentFile.mkdirs()
+    companion object {
+        fun getConnection(): Connection {
+            val userHome = System.getProperty("user.home")
+            val documentsPath = "${userHome + File.separator}Documents"
+            val dbPath = "${documentsPath + File.separator}Budget Manager${File.separator}budget.db"
 
-        return DriverManager.getConnection("jdbc:sqlite:$dbPath")
+            File(dbPath).parentFile.mkdirs()
+
+            return DriverManager.getConnection("jdbc:sqlite:$dbPath")
+        }
     }
 }

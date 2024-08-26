@@ -43,8 +43,6 @@ class LoginController: Initializable {
      */
     override fun initialize(url: URL?, resourceBundle: ResourceBundle?) {
 
-        Connexion()
-
         loginButton.setOnMouseClicked {
             if(usernameTextField.text.isEmpty() || passwordTextField.text.isEmpty()) {
                 Alert(Alert.AlertType.ERROR, "Please enter your username and password").showAndWait()
