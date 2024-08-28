@@ -5,10 +5,11 @@ import com.plaglefleau.budgetdesktop.database.models.DatabaseTransactionModel
 import com.plaglefleau.budgetdesktop.database.models.User
 import com.plaglefleau.budgetdesktop.managers.DatabaseManager
 import com.plaglefleau.budgetdesktop.managers.TransactionManager
-import com.plaglefleau.translate.Translation
 import javafx.beans.property.SimpleStringProperty
 import javafx.collections.FXCollections
 import javafx.collections.ObservableList
+import javafx.fxml.FXMLLoader
+import javafx.scene.Scene
 import javafx.scene.control.*
 import javafx.scene.control.cell.PropertyValueFactory
 import javafx.scene.input.MouseButton
@@ -23,36 +24,43 @@ import java.text.DecimalFormat
 import java.text.SimpleDateFormat
 import java.time.LocalDate
 import java.util.*
+import kotlin.math.log
 import kotlin.reflect.full.memberProperties
 import kotlin.system.exitProcess
 
 class MainController {
 
-    lateinit var accountFilterComboBox: ComboBox<String>
     lateinit var editMenu: Menu
     lateinit var fileMenu: Menu
+
     lateinit var remainingLabel: Label
     lateinit var creditLabel: Label
     lateinit var debitLabel: Label
     lateinit var afterLabel: Label
     lateinit var beforeLabel: Label
-    lateinit var mainVBox: VBox
-    lateinit var databaseTransactionModelTableView: TableView<DatabaseTransactionModel>
-    lateinit var fluctuationTextField: TextField
-    lateinit var totalCreditTextField: TextField
-    lateinit var totalDebitTextField: TextField
-    lateinit var beforeDatePicker: DatePicker
-    lateinit var afterDatePicker: DatePicker
+
+    lateinit var clearData: MenuItem
+    lateinit var openChartsWindow: MenuItem
     lateinit var loadFileButton: MenuItem
     lateinit var quitButton: MenuItem
+
     lateinit var showAll: RadioMenuItem
     lateinit var onlyDebits: RadioMenuItem
     lateinit var onlyCredits: RadioMenuItem
 
+    lateinit var mainVBox: VBox
+    lateinit var databaseTransactionModelTableView: TableView<DatabaseTransactionModel>
+    lateinit var accountFilterComboBox: ComboBox<String>
     private lateinit var toggleGroup: ToggleGroup
+    lateinit var beforeDatePicker: DatePicker
+    lateinit var afterDatePicker: DatePicker
+    lateinit var fluctuationTextField: TextField
+    lateinit var totalCreditTextField: TextField
+    lateinit var totalDebitTextField: TextField
 
     private var databaseManager: DatabaseManager = DatabaseManager("", "")
-    private val transactionManager = TransactionManager()
+    private var transactionManager = TransactionManager("", "")
+    private val translation = Language.translation
 
     private var login: User = User("","")
     private var primaryStage: Stage? = null
@@ -67,13 +75,9 @@ class MainController {
         this.login = login
 
         databaseManager = DatabaseManager(login.username, login.password)
+        transactionManager = TransactionManager(login.username, login.password)
 
         setAccountFilterComboBox()
-
-        accountFilterComboBox.setOnAction { event ->
-            databaseTransactionModelTableView.items = getFilteredList()
-            setTotalCreditDebitAndFluctuation()
-        }
 
         updateLanguage()
 
@@ -119,7 +123,6 @@ class MainController {
             val chosenFile = fileChooser.showOpenDialog(primaryStage)
 
             if (chosenFile != null) {
-                val translation = Language.translation
                 var account = ""
 
                 while (true) {
@@ -155,6 +158,36 @@ class MainController {
             databaseTransactionModelTableView.items = getFilteredList()
             setTotalCreditDebitAndFluctuation()
         }
+
+        accountFilterComboBox.setOnAction {
+            databaseTransactionModelTableView.items = getFilteredList()
+            setTotalCreditDebitAndFluctuation()
+        }
+
+        openChartsWindow.setOnAction {
+            val fxmlLoader = FXMLLoader(javaClass.getResource("/fxml/charts.fxml"))
+
+            val scene = Scene(fxmlLoader.load())
+            val stage = Stage()
+
+
+            stage.title = "Charts"
+            stage.scene = scene
+            stage.show()
+
+            val controller = fxmlLoader.getController<ChartsController>()
+            controller.setValue(login.username, login.password)
+        }
+
+        clearData.setOnAction {
+            val result = Alert(Alert.AlertType.CONFIRMATION, translation.getTraduction(Language.lang, "text.alert.clearData.confirmation")).showAndWait()
+            if(result.isPresent && result.get() == ButtonType.OK) {
+                databaseManager.clearForUser(login.username)
+                databaseTransactionModelTableView.items = getFilteredList()
+                setTotalCreditDebitAndFluctuation()
+                setAccountFilterComboBox()
+            }
+        }
     }
 
     /**
@@ -168,7 +201,13 @@ class MainController {
      * @return The filtered list of transactions as an ObservableList.
      */
     private fun getFilteredList(): ObservableList<DatabaseTransactionModel> {
-        return FXCollections.observableArrayList(getTransactions().map { transaction ->
+        return FXCollections.observableArrayList(transactionManager.getTransactions(
+            accountFilterComboBox.value ?: translation.getTraduction(Language.lang, "comboBox.all"),
+            onlyCredits.isSelected,
+            onlyDebits.isSelected,
+            calendarFromLocalDate(beforeDatePicker.value),
+            calendarFromLocalDate(afterDatePicker.value)
+        ).map { transaction ->
             if(transaction.customDescription!!.isNotEmpty()) {
                 transaction.copy(description = transaction.customDescription!!)
             } else {
@@ -201,7 +240,11 @@ class MainController {
      * @param localeDate The LocalDate object to convert.
      * @return The converted Calendar object.
      */
-    private fun calendarFromLocalDate(localeDate: LocalDate): Calendar {
+    private fun calendarFromLocalDate(localeDate: LocalDate?): Calendar? {
+        if(localeDate == null) {
+            return null
+        }
+
         val calendar = Calendar.getInstance()
         calendar.time = Date.from(localeDate.atStartOfDay(calendar.timeZone.toZoneId()).toInstant())
         return calendar
@@ -220,7 +263,13 @@ class MainController {
         var totalDebit = 0.0
         var totalCredit = 0.0
 
-        val transactions = getTransactionsBasedOnSelectedDate()
+        val transactions = transactionManager.getTransactions(
+            accountFilterComboBox.value ?: translation.getTraduction(Language.lang, "comboBox.all"),
+            onlyCredits.isSelected,
+            onlyDebits.isSelected,
+            calendarFromLocalDate(beforeDatePicker.value),
+            calendarFromLocalDate(afterDatePicker.value)
+        )
 
         transactions.forEach {
             totalDebit += it.debit ?: 0.0
@@ -230,77 +279,6 @@ class MainController {
         totalDebitTextField.text = decimalFormat.format(totalDebit)
         totalCreditTextField.text = decimalFormat.format(totalCredit)
         fluctuationTextField.text = decimalFormat.format(totalCredit - totalDebit)
-    }
-
-    /**
-     * Retrieves a list of transactions based on the selected date criteria.
-     *
-     * This method retrieves the transactions from the database using the databaseManager.
-     * It checks the beforeDatePicker and afterDatePicker values to determine the date range.
-     * If both values are null, it retrieves all transactions for the given username.
-     * If only the beforeDatePicker value is not null, it retrieves transactions that occurred before the specified date.
-     * If only the afterDatePicker value is not null, it retrieves transactions that occurred after the specified date.
-     * If both values are not null, it retrieves transactions that fall between the specified dates.
-     * The returned list of transactions is of type List<DatabaseTransactionModel>.
-     *
-     * @return The list of transactions based on the selected date criteria.
-     */
-    private fun getTransactionsBasedOnSelectedDate() : List<DatabaseTransactionModel> {
-        return if (afterDatePicker.value == null && beforeDatePicker.value == null) {
-            databaseManager.getTransactions(login.username)
-        } else if (afterDatePicker.value == null && beforeDatePicker.value != null) {
-            databaseManager.getTransactionsBefore(
-                login.username,
-                calendarFromLocalDate(beforeDatePicker.value)
-            )
-        } else if (afterDatePicker.value != null && beforeDatePicker.value == null) {
-            databaseManager.getTransactionsAfter(
-                login.username,
-                calendarFromLocalDate(afterDatePicker.value)
-            )
-        } else {
-            databaseManager.getTransactionsBetween(
-                login.username,
-                calendarFromLocalDate(afterDatePicker.value),
-                calendarFromLocalDate(beforeDatePicker.value)
-            )
-        }
-    }
-
-    /**
-     * Retrieves a list of transactions based on the selected date criteria.
-     *
-     * This method retrieves the transactions from the database using the databaseManager.
-     * It checks the beforeDatePicker and afterDatePicker values to determine the date range.
-     * If both values are null, it retrieves all transactions for the given username.
-     * If only the beforeDatePicker*/
-    private fun getTransactions(): List<DatabaseTransactionModel> {
-        val transactions = getTransactionsByAccount(accountFilterComboBox.value)
-
-        return if(onlyCredits.isSelected) {
-            transactions.filter {
-                it.credit != 0.0 && it.debit == 0.0
-            }
-        } else if (onlyDebits.isSelected) {
-            transactions.filter {
-                it.debit != 0.0 && it.credit == 0.0
-            }
-        } else {
-            transactions
-        }
-    }
-
-    private fun getTransactionsByAccount(account: String): List<DatabaseTransactionModel> {
-        val transactions = getTransactionsBasedOnSelectedDate()
-
-        return transactions.filter { transaction ->
-            transaction.account == account
-                    || account == Language.translation
-                        .getTraduction(
-                            Language.lang,
-                            "comboBox.all"
-                        )
-        }.sortedByDescending { it.date }
     }
 
     /**
@@ -364,7 +342,6 @@ class MainController {
                                                 println("Right-click detected on description column")
                                                 println("Cell value: $cellValue")
                                                 if(rowValue != null && rowValue is DatabaseTransactionModel) {
-                                                    val translation = Language.translation
                                                     val contextMenu = ContextMenu()
                                                     val changeDescriptionItem = MenuItem(translation.getTraduction(Language.lang, "text.menu.changeDescription"))
                                                     changeDescriptionItem.setOnAction {
@@ -417,26 +394,42 @@ class MainController {
         }
     }
 
+    /**
+     * Updates the language of the UI components.
+     *
+     * This function sets the text of various UI components in the application to display the translated strings from the translation object. It retrieves the translated strings using
+     *  the `getTraduction` method of the `translation` object, passing in the current language (`Language.lang`) and the corresponding translation keys for each UI component.
+     *
+     * The UI components that are updated include:
+     * - `beforeLabel`, `afterLabel`, `debitLabel`, `creditLabel`, and `remainingLabel` labels, which display translated text related to financial transactions.
+     * - `fileMenu` menu item, `loadFileButton` button, and `quitButton` button, which display translated text related to file operations.
+     * - `editMenu` menu item, `showAll`, `onlyCredits`, and `onlyDebits` radio buttons, which display translated text related to filtering options.
+     *
+     * This function does not take any parameters and does not return any values.
+     */
     private fun updateLanguage() {
-        val translation = Language.translation
-        beforeLabel.text = translation.getTraduction(Language.lang, "text.before")
-        afterLabel.text = translation.getTraduction(Language.lang, "text.after")
+        fileMenu.text = translation.getTraduction(Language.lang, "text.file")
+        editMenu.text = translation.getTraduction(Language.lang, "text.edit")
+
+        beforeLabel.text = translation.getTraduction(Language.lang, "datePicker.before")
+        afterLabel.text = translation.getTraduction(Language.lang, "datePicker.after")
         debitLabel.text = translation.getTraduction(Language.lang, "text.debit")
         creditLabel.text = translation.getTraduction(Language.lang, "text.credit")
         remainingLabel.text = translation.getTraduction(Language.lang, "text.remaining")
 
-        fileMenu.text = translation.getTraduction(Language.lang, "text.file")
+
         loadFileButton.text = translation.getTraduction(Language.lang, "text.loadFile")
         quitButton.text = translation.getTraduction(Language.lang, "text.quit")
+        openChartsWindow.text = translation.getTraduction(Language.lang, "text.openChartsWindow")
+        clearData.text = translation.getTraduction(Language.lang, "text.clearData")
 
-        editMenu.text = translation.getTraduction(Language.lang, "text.edit")
         showAll.text = translation.getTraduction(Language.lang, "text.showAll")
         onlyCredits.text = translation.getTraduction(Language.lang, "text.onlyCredits")
         onlyDebits.text = translation.getTraduction(Language.lang, "text.onlyDebits")
+
     }
 
     private fun askAccount(): Optional<String> {
-        val translation = Language.translation
         val dialog = TextInputDialog("")
         dialog.title = translation.getTraduction(Language.lang, "text.dialog.chooseFile.title")
         dialog.headerText = translation.getTraduction(Language.lang, "text.dialog.chooseFile.headerText")
@@ -447,7 +440,7 @@ class MainController {
 
     private fun setAccountFilterComboBox() {
         val accounts = mutableListOf(databaseManager.getAccounts(login.username))
-        val all = Language.translation.getTraduction(Language.lang, "comboBox.all")
+        val all = translation.getTraduction(Language.lang, "comboBox.all")
         accounts.addFirst(listOf(all))
 
         accountFilterComboBox.items = FXCollections.observableArrayList(accounts.flatten())

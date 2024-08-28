@@ -245,6 +245,45 @@ class DatabaseManager(private val username: String, private val password: String
     }
 
     /**
+     * Retrieves a list of transactions from the given ResultSet.
+     *
+     * @param rs The ResultSet containing the transactions.
+     * @return The list of DatabaseTransactionModel objects representing the transactions.
+     */
+    private fun getTransactionsFromResultSet(rs: ResultSet): List<DatabaseTransactionModel> {
+        val transactions = mutableListOf<DatabaseTransactionModel>()
+        while (rs.next()) {
+            val date = decrypt(rs.getString("date"))
+            transactions.add(
+                DatabaseTransactionModel(
+                    rs.getInt("id"),
+                    sqlDateToCalendar(date),
+                    decrypt(rs.getString("username")),
+                    decrypt(rs.getString("description")),
+                    decrypt(rs.getString("custom_description")?:""),
+                    account = decrypt(
+                        rs.getString("account")?:
+                        encrypt("Main account")
+                    ),
+                    decrypt(
+                        rs.getString("credit")?:
+                        Base64.getEncoder().encodeToString(
+                            "0.0".toByteArray()
+                        )
+                    ).toDouble(),
+                    decrypt(
+                        rs.getString("debit")?:
+                        Base64.getEncoder().encodeToString(
+                            "0.0".toByteArray()
+                        )
+                    ).toDouble()
+                )
+            )
+        }
+        return transactions
+    }
+
+    /**
      * Adds a transaction to the database with the provided details.
      *
      * @param date The date of the transaction.
@@ -327,6 +366,20 @@ class DatabaseManager(private val username: String, private val password: String
     }
 
     /**
+     * Clears all transactions associated with a specific user from the database.
+     *
+     * @param username The username of the user whose transactions should be cleared.
+     */
+    fun clearForUser(username: String) {
+        val connection = getConnection()
+        val preparedStatement = connection.prepareStatement("DELETE FROM transactions WHERE username = ?")
+        preparedStatement.setString(1, encrypt(username))
+        preparedStatement.executeUpdate()
+        preparedStatement.close()
+        connection.close()
+    }
+
+    /**
      * Retrieves a connection to the*/
     private fun getConnection(): Connection {
         return DatabaseManager.getConnection()
@@ -350,45 +403,6 @@ class DatabaseManager(private val username: String, private val password: String
      */
     private fun calendarToSqlDate(calendar: Calendar): Date {
         return Date(calendar.timeInMillis)
-    }
-
-    /**
-     * Retrieves a list of transactions from the given ResultSet.
-     *
-     * @param rs The ResultSet containing the transactions.
-     * @return The list of DatabaseTransactionModel objects representing the transactions.
-     */
-    private fun getTransactionsFromResultSet(rs: ResultSet): List<DatabaseTransactionModel> {
-        val transactions = mutableListOf<DatabaseTransactionModel>()
-        while (rs.next()) {
-            val date = decrypt(rs.getString("date"))
-            transactions.add(
-                DatabaseTransactionModel(
-                    rs.getInt("id"),
-                    sqlDateToCalendar(date),
-                    decrypt(rs.getString("username")),
-                    decrypt(rs.getString("description")),
-                    decrypt(rs.getString("custom_description")?:""),
-                    account = decrypt(
-                        rs.getString("account")?:
-                        encrypt("Main account")
-                    ),
-                    decrypt(
-                        rs.getString("credit")?:
-                        Base64.getEncoder().encodeToString(
-                            "0.0".toByteArray()
-                        )
-                    ).toDouble(),
-                    decrypt(
-                        rs.getString("debit")?:
-                        Base64.getEncoder().encodeToString(
-                            "0.0".toByteArray()
-                        )
-                    ).toDouble()
-                )
-            )
-        }
-        return transactions
     }
 
     /**

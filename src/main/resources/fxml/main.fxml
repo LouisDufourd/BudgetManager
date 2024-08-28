@@ -19,10 +19,13 @@
   <MenuBar VBox.vgrow="NEVER">
     <Menu fx:id="fileMenu" mnemonicParsing="false" text="File">
          <MenuItem fx:id="loadFileButton" mnemonicParsing="false" text="Load from csv file" />
+         <MenuItem fx:id="openChartsWindow" mnemonicParsing="false" text="Open a stat window" />
       <SeparatorMenuItem mnemonicParsing="false" />
       <MenuItem fx:id="quitButton" mnemonicParsing="false" text="Quit" />
     </Menu>
     <Menu fx:id="editMenu" mnemonicParsing="false" text="Edit">
+      <MenuItem fx:id="clearData" mnemonicParsing="false" text="Clear Data" />
+      <SeparatorMenuItem mnemonicParsing="false" />
       <RadioMenuItem fx:id="onlyCredits" mnemonicParsing="false" text="Only Credits" />
       <RadioMenuItem fx:id="onlyDebits" mnemonicParsing="false" text="Only Debits" />
       <RadioMenuItem fx:id="showAll" mnemonicParsing="false" text="Show All" />
@@ -31,16 +34,16 @@
   <AnchorPane VBox.vgrow="ALWAYS">
     <HBox alignment="CENTER_LEFT" spacing="5.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
       <Label fx:id="beforeLabel" text="Before :" />
-      <DatePicker fx:id="beforeDatePicker" />
+      <DatePicker fx:id="beforeDatePicker" prefWidth="150.0"/>
       <Label fx:id="afterLabel" text="After :" />
-      <DatePicker fx:id="afterDatePicker" />
+      <DatePicker fx:id="afterDatePicker" prefWidth="150.0"/>
       <Label fx:id="debitLabel" text="Debit Total :" />
-      <TextField fx:id="totalDebitTextField" editable="false" />
+      <TextField fx:id="totalDebitTextField" prefWidth="150.0" editable="false" />
       <Label fx:id="creditLabel" text="Credit Total :" />
-      <TextField fx:id="totalCreditTextField" editable="false" />
+      <TextField fx:id="totalCreditTextField" prefWidth="150.0" editable="false" />
       <Label fx:id="remainingLabel" text="Reste :" />
-      <TextField fx:id="fluctuationTextField" editable="false" />
-         <ComboBox fx:id="accountFilterComboBox" prefWidth="150.0" promptText="Account filter :" />
+      <TextField fx:id="fluctuationTextField" prefWidth="150.0" editable="false" />
+         <ComboBox fx:id="accountFilterComboBox" prefWidth="150.0" promptText="Account filter" />
     </HBox>
     <TableView fx:id="databaseTransactionModelTableView" layoutX="220.0" layoutY="25.0" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="25.0">
       <columns>

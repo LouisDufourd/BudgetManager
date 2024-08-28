@@ -1,5 +1,6 @@
 package com.plaglefleau.budgetdesktop.managers
 
+import com.plaglefleau.budgetdesktop.Language
 import com.plaglefleau.budgetdesktop.database.models.DatabaseTransactionModel
 import java.io.File
 import java.nio.charset.Charset
@@ -7,7 +8,7 @@ import java.nio.file.Path
 import java.text.SimpleDateFormat
 import java.util.*
 
-class TransactionManager {
+class TransactionManager(val username: String, val password:String) {
 
     /**
      * Parses the transactions from a file.
@@ -125,5 +126,77 @@ class TransactionManager {
         } catch (e: Exception) {
             null
         }
+    }
+
+    /**
+     * Retrieves a list of transactions based on the selected date criteria.
+     *
+     * This method retrieves the transactions from the database using the databaseManager.
+     * It checks the beforeDatePicker and afterDatePicker values to determine the date range.
+     * If both values are null, it retrieves all transactions for the given username.
+     * If only the beforeDatePicker value is not null, it retrieves transactions that occurred before the specified date.
+     * If only the afterDatePicker value is not null, it retrieves transactions that occurred after the specified date.
+     * If both values are not null, it retrieves transactions that fall between the specified dates.
+     * The returned list of transactions is of type List<DatabaseTransactionModel>.
+     *
+     * @return The list of transactions based on the selected date criteria.
+     */
+    fun getTransactionsBasedOnSelectedDate(afterDate: Calendar?, beforeDate: Calendar?) : List<DatabaseTransactionModel> {
+        val databaseManager = DatabaseManager(username, password)
+        return if (afterDate == null && beforeDate != null) {
+            databaseManager.getTransactionsBefore(
+                username,
+                beforeDate
+            )
+        } else if (afterDate != null && beforeDate == null) {
+            databaseManager.getTransactionsAfter(
+                username,
+                afterDate
+            )
+        } else if (beforeDate != null && afterDate != null){
+            databaseManager.getTransactionsBetween(
+                username,
+                afterDate,
+                beforeDate
+            )
+        } else {
+            databaseManager.getTransactions(username)
+        }
+    }
+
+    /**
+     * Retrieves a list of transactions based on the selected date criteria.
+     *
+     * This method retrieves the transactions from the database using the databaseManager.
+     * It checks the beforeDatePicker and afterDatePicker values to determine the date range.
+     * If both values are null, it retrieves all transactions for the given username.
+     * If only the beforeDatePicker*/
+    fun getTransactions(account: String, onlyCredits: Boolean, onlyDebits: Boolean, beforeDate: Calendar?, afterDate: Calendar?): List<DatabaseTransactionModel> {
+        val transactions = getTransactionsByAccount(account, beforeDate, afterDate)
+
+        return if(onlyCredits) {
+            transactions.filter {
+                it.credit != 0.0 && it.debit == 0.0
+            }
+        } else if (onlyDebits) {
+            transactions.filter {
+                it.debit != 0.0 && it.credit == 0.0
+            }
+        } else {
+            transactions
+        }
+    }
+
+    fun getTransactionsByAccount(account: String, beforeDate: Calendar?, afterDate: Calendar?): List<DatabaseTransactionModel> {
+        val transactions = getTransactionsBasedOnSelectedDate(afterDate, beforeDate)
+
+        return transactions.filter { transaction ->
+            transaction.account == account
+                    || account == Language.translation
+                .getTraduction(
+                    Language.lang,
+                    "comboBox.all"
+                )
+        }.sortedByDescending { it.date }
     }
 }

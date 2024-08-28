@@ -109,6 +109,12 @@ fun setupEnTranslation() {
     translation.setTraduction(lang, "text.menu.changeDescription.description", "Please enter a new description: ")
 
     translation.setTraduction(lang, "comboBox.all", "All accounts")
+
+    translation.setTraduction(lang, "text.openChartsWindow", "Display account cash flow")
+    translation.setTraduction(lang, "text.clearData", "Clear account data")
+    translation.setTraduction(lang, "text.amount", "Amount")
+    translation.setTraduction(lang, "text.date", "Date")
+    translation.setTraduction(lang, "comboBox.account", "Account")
 }
 
 /**
@@ -134,8 +140,8 @@ fun setupFrTranslation() {
     translation.setTraduction(lang, "text.usernameSizeError", "La longueur de votre nom d'utilisateur ne peut pas dépasser 25 caractères")
     translation.setTraduction(lang, "text.badLoginError", "Votre nom d'utilisateur ou mot de passe est incorrect")
 
-    translation.setTraduction(lang, "text.before", "Avant")
-    translation.setTraduction(lang, "text.after", "Après")
+    translation.setTraduction(lang, "datePicker.before", "Avant")
+    translation.setTraduction(lang, "datePicker.after", "Après")
     translation.setTraduction(lang, "text.debit", "Débit")
     translation.setTraduction(lang, "text.credit", "Crédit")
     translation.setTraduction(lang, "text.remaining", "Restant")
@@ -158,6 +164,12 @@ fun setupFrTranslation() {
     translation.setTraduction(lang, "text.menu.changeDescription.description", "Veuillez entrez une nouvelle description: ")
 
     translation.setTraduction(lang, "comboBox.all", "Tous les comptes")
+
+    translation.setTraduction(lang, "text.openChartsWindow", "Afficher la fluctuation d'argent du compte")
+    translation.setTraduction(lang, "text.clearData", "Effacer les données du compte")
+    translation.setTraduction(lang, "text.amount", "Quantité")
+    translation.setTraduction(lang, "text.date", "Date")
+    translation.setTraduction(lang, "comboBox.account", "Compte")
 }
 
 fun deletePreviousVersions() {
