@@ -1,13 +1,11 @@
 package com.plaglefleau.budgetdesktop.managers
 
 import com.plaglefleau.budgetdesktop.database.Connexion
+import com.plaglefleau.budgetdesktop.database.Migrate
 import com.plaglefleau.budgetdesktop.database.models.DatabaseTransactionModel
 import com.plaglefleau.budgetdesktop.database.models.User
-import java.io.File
-import java.sql.Connection
+import java.sql.*
 import java.sql.Date
-import java.sql.DriverManager
-import java.sql.ResultSet
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -81,12 +79,19 @@ class DatabaseManager(private val username: String, private val password: String
 
             if(user == null) {
                 register(username, password)
+                Migrate().migrate(username, password)
                 return true
             } else {
-                return EncryptManager.hmacSha256(
-                    username + (username.length + password.length),
-                    password
-                ) == user.password
+                return if(
+                    EncryptManager.hmacSha256(
+                        username + (username.length + password.length),
+                        password
+                    ) == user.password) {
+                    Migrate().migrate(username, password)
+                    true
+                } else {
+                    false
+                }
             }
         }
 
@@ -123,6 +128,30 @@ class DatabaseManager(private val username: String, private val password: String
      */
     fun login(username: String, password: String): Boolean {
         return DatabaseManager.login(username, password)
+    }
+
+    /**
+     * Retrieves a list of accounts associated with the provided username.
+     *
+     * @param username The username for which to retrieve the accounts.
+     * @return The list of account names as strings.
+     */
+    fun getAccounts(username: String) : List<String> {
+        val connection = getConnection()
+        val preparedStatement = connection.prepareStatement(
+            "SELECT account FROM transactions WHERE username = ?"
+        )
+        preparedStatement.setString(1, encrypt(username))
+        val rs = preparedStatement.executeQuery()
+        val accounts = mutableListOf<String>()
+        while(rs.next()) {
+            val account = decrypt(rs.getString("account"))
+            if(!accounts.contains(account)) {
+                accounts.add(account)
+            }
+        }
+
+        return accounts
     }
 
     /**
@@ -185,21 +214,10 @@ class DatabaseManager(private val username: String, private val password: String
     fun getTransactions(): List<DatabaseTransactionModel> {
         val connection = getConnection()
         val preparedStatement = connection.prepareStatement(
-            "SELECT date, username, description, credit, debit FROM transactions"
+            "SELECT id, date, username, description, custom_description, account, credit, debit FROM transactions"
         )
         val rs = preparedStatement.executeQuery()
-        val transactions = mutableListOf<DatabaseTransactionModel>()
-        while (rs.next()) {
-            transactions.add(
-                DatabaseTransactionModel(
-                    sqlDateToCalendar(rs.getString("date")),
-                    rs.getString("username"),
-                    rs.getString("description"),
-                    rs.getString("credit").toDoubleOrNull() ?: 0.0,
-                    rs.getString("debit").toDoubleOrNull() ?: 0.0
-                )
-            )
-        }
+        val transactions = getTransactionsFromResultSet(rs)
         rs.close()
         preparedStatement.close()
         connection.close()
@@ -215,7 +233,7 @@ class DatabaseManager(private val username: String, private val password: String
     fun getTransactions(username: String): List<DatabaseTransactionModel> {
         val connection = getConnection()
         val preparedStatement = connection.prepareStatement(
-            "SELECT date, username, description, credit, debit FROM transactions WHERE username = ?"
+            "SELECT id, date, username, description, custom_description, account, credit, debit FROM transactions WHERE username = ?"
         )
         preparedStatement.setString(1, encrypt(username))
         val rs = preparedStatement.executeQuery()
@@ -235,28 +253,30 @@ class DatabaseManager(private val username: String, private val password: String
      * @param credit The amount credited in the transaction, or null if no credit amount.
      * @param debit The amount debited in the transaction, or null if no debit amount.
      */
-    fun addTransaction(date: Calendar, username: String, description: String, credit: Double?, debit: Double?) {
+    fun addTransaction(date: Calendar, username: String, description: String, account: String, credit: Double?, debit: Double?) {
         val connection = getConnection()
         val preparedStatement = connection.prepareStatement(
-            "INSERT INTO transactions (id, username, date, description, credit, debit) " +
-                    "VALUES (NULL, ?, ?, ?, ?, ?)"
+            "INSERT INTO transactions (id, username, date, description, custom_description, account, credit, debit) " +
+                    "VALUES (NULL, ?, ?, ?, ?, ?, ?, ?)"
         )
         preparedStatement.setString(1, encrypt(username))
         preparedStatement.setString(2, encrypt(calendarToSqlDate(date).toString()))
         preparedStatement.setString(3, encrypt(description))
+        preparedStatement.setNull(4, Types.VARCHAR)
+        preparedStatement.setString(5, encrypt(account))
 
         // SET Credit
         if (credit != null) {
-            preparedStatement.setString(4, encrypt(credit.toString()))
+            preparedStatement.setString(6, encrypt(credit.toString()))
         } else {
-            preparedStatement.setNull(4, java.sql.Types.VARCHAR)
+            preparedStatement.setNull(6, Types.VARCHAR)
         }
 
         // SET Debit
         if (debit != null) {
-            preparedStatement.setString(5, encrypt(debit.toString()))
+            preparedStatement.setString(7, encrypt(debit.toString()))
         } else {
-            preparedStatement.setNull(5, java.sql.Types.VARCHAR)
+            preparedStatement.setNull(7, Types.VARCHAR)
         }
 
         preparedStatement.executeUpdate()
@@ -278,6 +298,7 @@ class DatabaseManager(private val username: String, private val password: String
                     transaction.date,
                     transaction.username,
                     transaction.description,
+                    transaction.account ?: "unknown",
                     transaction.credit,
                     transaction.debit
                 )
@@ -286,8 +307,28 @@ class DatabaseManager(private val username: String, private val password: String
     }
 
     /**
+     * Updates the description of a transaction with the provided ID.
+     * This method modifies the 'custom_description' field of the 'transactions' table in the database.
+     * The updated description is encrypted using AES encryption with the provided key.
+     *
+     * @param id The ID of the transaction to update.
+     * @param customDescription The new description to set for the transaction.
+     */
+    fun updateTransactionDescription(id: Int, customDescription: String) {
+        val connection = getConnection()
+        val preparedStatement = connection.prepareStatement(
+            "UPDATE transactions SET custom_description = ? WHERE id = ?"
+        )
+        preparedStatement.setString(1, encrypt(customDescription))
+        preparedStatement.setInt(2, id)
+        preparedStatement.executeUpdate()
+        preparedStatement.close()
+        connection.close()
+    }
+
+    /**
      * Retrieves a connection to the*/
-    private fun getConnection(): java.sql.Connection {
+    private fun getConnection(): Connection {
         return DatabaseManager.getConnection()
     }
 
@@ -323,9 +364,15 @@ class DatabaseManager(private val username: String, private val password: String
             val date = decrypt(rs.getString("date"))
             transactions.add(
                 DatabaseTransactionModel(
+                    rs.getInt("id"),
                     sqlDateToCalendar(date),
                     decrypt(rs.getString("username")),
                     decrypt(rs.getString("description")),
+                    decrypt(rs.getString("custom_description")?:""),
+                    account = decrypt(
+                        rs.getString("account")?:
+                        encrypt("Main account")
+                    ),
                     decrypt(
                         rs.getString("credit")?:
                         Base64.getEncoder().encodeToString(

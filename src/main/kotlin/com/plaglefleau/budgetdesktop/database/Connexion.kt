@@ -1,10 +1,8 @@
 package com.plaglefleau.budgetdesktop.database
 
-import javafx.scene.control.PasswordField
 import java.io.File
 import java.sql.Connection
 import java.sql.DriverManager
-import javax.crypto.SecretKey
 
 class Connexion(username: String, password: String) {
 
@@ -20,6 +18,8 @@ class Connexion(username: String, password: String) {
                 username VARCHAR(255) NOT NULL,
                 date VARCHAR(255) NOT NULL,
                 description TEXT NOT NULL,
+                custom_description TEXT NULL,
+                account VARCHAR(255) NOT NULL,
                 credit VARCHAR(255),
                 debit VARCHAR(255)
             );

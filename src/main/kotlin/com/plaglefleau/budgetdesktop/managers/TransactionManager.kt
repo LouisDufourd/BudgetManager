@@ -15,8 +15,8 @@ class TransactionManager {
      * @param filePath The path of the file to parse.
      * @return A list of parsed transactions.
      */
-    fun parseTransactions(filePath: Path, username: String): List<DatabaseTransactionModel> {
-        return parseTransactions(filePath.toFile(), username)
+    fun parseTransactions(filePath: Path, username: String, account: String): List<DatabaseTransactionModel> {
+        return parseTransactions(filePath.toFile(), username, account)
     }
 
     /**
@@ -25,11 +25,11 @@ class TransactionManager {
      * @param file The file to parse.
      * @return A list of parsed transactions.
      */
-    fun parseTransactions(file: File, username: String): List<DatabaseTransactionModel> {
+    fun parseTransactions(file: File, username: String, account: String): List<DatabaseTransactionModel> {
 
         val rawData = file.readText(Charset.forName("Cp1252"))
 
-        return parseTransactions(rawData, username)
+        return parseTransactions(rawData, username, account)
     }
 
     /**
@@ -37,7 +37,7 @@ class TransactionManager {
      *
      * @param rawData The raw data string containing transaction information.
      **/
-    fun parseTransactions(rawData: String, username: String): List<DatabaseTransactionModel> {
+    fun parseTransactions(rawData: String, username: String, account: String): List<DatabaseTransactionModel> {
 
         val databaseTransactionModels = mutableListOf<DatabaseTransactionModel>()
 
@@ -83,9 +83,12 @@ class TransactionManager {
 
                     databaseTransactionModels.add(
                         DatabaseTransactionModel(
+                            id = 0,
                             date = date,
                             username = username,
                             description = description,
+                            account = account,
+                            customDescription = "",
                             debit = debit,
                             credit = credit
                         )

@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <?import javafx.geometry.Insets?>
+<?import javafx.scene.control.ComboBox?>
 <?import javafx.scene.control.DatePicker?>
 <?import javafx.scene.control.Label?>
 <?import javafx.scene.control.Menu?>
@@ -39,6 +40,7 @@
       <TextField fx:id="totalCreditTextField" editable="false" />
       <Label fx:id="remainingLabel" text="Reste :" />
       <TextField fx:id="fluctuationTextField" editable="false" />
+         <ComboBox fx:id="accountFilterComboBox" prefWidth="150.0" promptText="Account filter :" />
     </HBox>
     <TableView fx:id="databaseTransactionModelTableView" layoutX="220.0" layoutY="25.0" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="25.0">
       <columns>

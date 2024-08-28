@@ -4,9 +4,12 @@ import java.text.SimpleDateFormat
 import java.util.*
 
 data class DatabaseTransactionModel(
+    val id: Int,
     val date: Calendar,
     val username: String,
     val description: String,
+    var customDescription: String?,
+    val account: String?,
     val credit: Double?,
     val debit: Double?
 ) {
@@ -45,5 +48,16 @@ data class DatabaseTransactionModel(
                 $credit 
                 $debit
         """.trimIndent()
+    }
+
+    override fun hashCode(): Int {
+        var result = date.hashCode()
+        result = 31 * result + username.hashCode()
+        result = 31 * result + description.hashCode()
+        result = 31 * result + (credit?.hashCode() ?: 0)
+        result = 31 * result + (debit?.hashCode() ?: 0)
+        result = 31 * result + (customDescription?.hashCode() ?: 0)
+        result = 31 * result + (account?.hashCode() ?: 0)
+        return result
     }
 }

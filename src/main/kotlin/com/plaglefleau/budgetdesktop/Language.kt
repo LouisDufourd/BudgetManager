@@ -11,13 +11,13 @@ object Language {
             return if (languages.contains(lang)) lang else "en"
         }
 
-    private val userHome = System.getProperty("user.home")
+    private val langFolder = "${System.getProperty("user.home")}\\Documents\\Budget Manager\\lang"
 
-    val translation = Translation("$userHome\\Documents\\Budget Manager\\lang")
+    val translation = Translation(langFolder)
 
     val languages: List<String>
         get() {
-            val iterator = FileEditing.getFolderFileNames("./lang", "json").iterator()
+            val iterator = FileEditing.getFolderFileNames(langFolder, "json").iterator()
 
             val languages = mutableListOf<String>()
 

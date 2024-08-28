@@ -5,11 +5,14 @@ import com.plaglefleau.budgetdesktop.database.models.DatabaseTransactionModel
 import com.plaglefleau.budgetdesktop.database.models.User
 import com.plaglefleau.budgetdesktop.managers.DatabaseManager
 import com.plaglefleau.budgetdesktop.managers.TransactionManager
+import com.plaglefleau.translate.Translation
 import javafx.beans.property.SimpleStringProperty
 import javafx.collections.FXCollections
 import javafx.collections.ObservableList
 import javafx.scene.control.*
 import javafx.scene.control.cell.PropertyValueFactory
+import javafx.scene.input.MouseButton
+import javafx.scene.input.MouseEvent
 import javafx.scene.layout.VBox
 import javafx.stage.FileChooser
 import javafx.stage.Stage
@@ -25,6 +28,7 @@ import kotlin.system.exitProcess
 
 class MainController {
 
+    lateinit var accountFilterComboBox: ComboBox<String>
     lateinit var editMenu: Menu
     lateinit var fileMenu: Menu
     lateinit var remainingLabel: Label
@@ -61,7 +65,15 @@ class MainController {
      */
     fun setupData(login: User, primaryStage: Stage) {
         this.login = login
+
         databaseManager = DatabaseManager(login.username, login.password)
+
+        setAccountFilterComboBox()
+
+        accountFilterComboBox.setOnAction { event ->
+            databaseTransactionModelTableView.items = getFilteredList()
+            setTotalCreditDebitAndFluctuation()
+        }
 
         updateLanguage()
 
@@ -70,10 +82,8 @@ class MainController {
         primaryStage.minWidth = mainVBox.width
         primaryStage.minHeight = mainVBox.height
         primaryStage.isResizable = true
-
-        val transactionList = getTransactions()
         setColumns(databaseTransactionModelTableView, DatabaseTransactionModel::class)
-        databaseTransactionModelTableView.items.setAll(transactionList)
+        databaseTransactionModelTableView.items = getFilteredList()
         setTotalCreditDebitAndFluctuation()
 
         toggleGroup = ToggleGroup()
@@ -109,10 +119,26 @@ class MainController {
             val chosenFile = fileChooser.showOpenDialog(primaryStage)
 
             if (chosenFile != null) {
-                val transactions = transactionManager.parseTransactions(chosenFile, login.username)
+                val translation = Language.translation
+                var account = ""
+
+                while (true) {
+                    val result = askAccount()
+
+                    if(result.isPresent) {
+                        account = result.get()
+                        break
+                    }
+
+                    Alert(Alert.AlertType.WARNING , translation.getTraduction(Language.lang, "text.alert.askAccount.warning")).showAndWait()
+                }
+
+                val transactions = transactionManager.parseTransactions(chosenFile, login.username, account)
                 databaseManager.uploadTransactions(transactions)
                 databaseTransactionModelTableView.items = getFilteredList()
                 setTotalCreditDebitAndFluctuation()
+                setAccountFilterComboBox()
+
             }
         }
 
@@ -142,7 +168,13 @@ class MainController {
      * @return The filtered list of transactions as an ObservableList.
      */
     private fun getFilteredList(): ObservableList<DatabaseTransactionModel> {
-        return FXCollections.observableArrayList(getTransactions())
+        return FXCollections.observableArrayList(getTransactions().map { transaction ->
+            if(transaction.customDescription!!.isNotEmpty()) {
+                transaction.copy(description = transaction.customDescription!!)
+            } else {
+                transaction
+            }
+        })
     }
 
     /**
@@ -243,7 +275,7 @@ class MainController {
      * If both values are null, it retrieves all transactions for the given username.
      * If only the beforeDatePicker*/
     private fun getTransactions(): List<DatabaseTransactionModel> {
-        val transactions = getTransactionsBasedOnSelectedDate()
+        val transactions = getTransactionsByAccount(accountFilterComboBox.value)
 
         return if(onlyCredits.isSelected) {
             transactions.filter {
@@ -258,6 +290,19 @@ class MainController {
         }
     }
 
+    private fun getTransactionsByAccount(account: String): List<DatabaseTransactionModel> {
+        val transactions = getTransactionsBasedOnSelectedDate()
+
+        return transactions.filter { transaction ->
+            transaction.account == account
+                    || account == Language.translation
+                        .getTraduction(
+                            Language.lang,
+                            "comboBox.all"
+                        )
+        }.sortedByDescending { it.date }
+    }
+
     /**
      * Clears the existing columns in the TableView and sets up new columns based on the given class type.
      *
@@ -268,7 +313,7 @@ class MainController {
     private fun <T : Any> setColumns(tableView: TableView<T>, kClass: kotlin.reflect.KClass<T>) {
         tableView.columns.clear()
         kClass.memberProperties.forEach { prop ->
-            val column = TableColumn<T, String>(prop.name.capitalize())
+            val column = TableColumn<T, String>(prop.name.replace(Regex("([A-Z])"), " $1").uppercase())
 
             // Custom cell value factory for Calendar
             when (prop.returnType.classifier) {
@@ -299,16 +344,72 @@ class MainController {
                 }
                 String::class -> {
 
-                    if(prop.name != "username") {
+                    if (prop.name != "username" && prop.name != "customDescription") {
                         column.cellValueFactory = Callback { cellData ->
                             val value = prop.get(cellData.value) as? String
-                            SimpleStringProperty(value!!.replace("\n", "").replace("\r", "").replace("\"","").replace(Regex("\\s+"), " ").trim())
+                            SimpleStringProperty(value!!.replace("\n", "").replace("\r", "").replace("\"", "").replace(Regex("\\s+"), " ").trim())
                         }
+
+                        if (prop.name == "description") {
+                            // Set a custom cell factory to detect right-clicks on "description" column
+                            column.setCellFactory {
+                                object : TableCell<T, String>() {
+                                    init {
+                                        // Add a mouse click event listener to the cell
+                                        this.addEventFilter(MouseEvent.MOUSE_CLICKED) { event ->
+                                            if (event.button == MouseButton.SECONDARY) { // Right-click detection
+                                                val cellValue = item // Get the value of the cell
+                                                val rowValue = tableRow.item // Get the value of the entire row
+
+                                                println("Right-click detected on description column")
+                                                println("Cell value: $cellValue")
+                                                if(rowValue != null && rowValue is DatabaseTransactionModel) {
+                                                    val translation = Language.translation
+                                                    val contextMenu = ContextMenu()
+                                                    val changeDescriptionItem = MenuItem(translation.getTraduction(Language.lang, "text.menu.changeDescription"))
+                                                    changeDescriptionItem.setOnAction {
+                                                        val dialog = TextInputDialog(cellValue)
+                                                        dialog.title = translation.getTraduction(Language.lang, "text.menu.changeDescription")
+                                                        dialog.contentText = translation.getTraduction(Language.lang, "text.menu.changeDescription.description")
+
+                                                        val result = dialog.showAndWait()
+                                                        result.ifPresent { newDescription ->
+                                                            // Update the description in the model
+                                                            (rowValue as? DatabaseTransactionModel)?.let {
+                                                                it.customDescription = newDescription
+                                                                // Optionally update the TableView or other UI components
+
+                                                                databaseManager.updateTransactionDescription(it.id, it.customDescription!!)
+
+                                                                databaseTransactionModelTableView.items = getFilteredList()
+                                                                setTotalCreditDebitAndFluctuation()
+                                                            }
+                                                        }
+                                                    }
+                                                    contextMenu.items.add(changeDescriptionItem)
+                                                    contextMenu.show(this, event.screenX, event.screenY)
+                                                }
+
+                                                // Handle your right-click event here
+                                                event.consume() // Stop further processing if needed
+                                            }
+                                        }
+                                    }
+
+                                    override fun updateItem(item: String?, empty: Boolean) {
+                                        super.updateItem(item, empty)
+                                        text = if (empty) null else item
+                                    }
+                                }
+                            }
+                        }
+
                         tableView.columns.add(column)
                     }
                 }
+                Int::class -> {}
                 else -> {
-                    column.cellValueFactory = PropertyValueFactory<T, String>(prop.name)
+                    column.cellValueFactory = PropertyValueFactory(prop.name)
                     tableView.columns.add(column)
                 }
             }
@@ -332,5 +433,24 @@ class MainController {
         showAll.text = translation.getTraduction(Language.lang, "text.showAll")
         onlyCredits.text = translation.getTraduction(Language.lang, "text.onlyCredits")
         onlyDebits.text = translation.getTraduction(Language.lang, "text.onlyDebits")
+    }
+
+    private fun askAccount(): Optional<String> {
+        val translation = Language.translation
+        val dialog = TextInputDialog("")
+        dialog.title = translation.getTraduction(Language.lang, "text.dialog.chooseFile.title")
+        dialog.headerText = translation.getTraduction(Language.lang, "text.dialog.chooseFile.headerText")
+        dialog.contentText = translation.getTraduction(Language.lang, "text.dialog.chooseFile.contentText")
+
+        return dialog.showAndWait()
+    }
+
+    private fun setAccountFilterComboBox() {
+        val accounts = mutableListOf(databaseManager.getAccounts(login.username))
+        val all = Language.translation.getTraduction(Language.lang, "comboBox.all")
+        accounts.addFirst(listOf(all))
+
+        accountFilterComboBox.items = FXCollections.observableArrayList(accounts.flatten())
+        accountFilterComboBox.value = all
     }
 }

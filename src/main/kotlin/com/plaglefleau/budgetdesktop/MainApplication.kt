@@ -1,7 +1,7 @@
 package com.plaglefleau.budgetdesktop
 
 import com.plaglefleau.budgetdesktop.controller.LoginController
-import com.plaglefleau.translate.Translation
+import com.plaglefleau.budgetdesktop.database.DatabaseVersion
 import javafx.application.Application
 import javafx.application.Application.launch
 import javafx.fxml.FXMLLoader
@@ -9,6 +9,7 @@ import javafx.scene.Scene
 import javafx.scene.image.Image
 import javafx.stage.Stage
 import java.io.File
+import java.util.regex.Pattern
 
 class MainApplication : Application() {
     override fun start(stage: Stage) {
@@ -34,8 +35,11 @@ class MainApplication : Application() {
         @JvmStatic
         fun main(args: Array<String>) {
             try {
+//                DatabaseVersion.VERSION = 2
+
                 setupEnTranslation()
                 setupFrTranslation()
+                deletePreviousVersions()
 
                 launch(MainApplication::class.java)
             } catch (e: Exception) {
@@ -50,6 +54,7 @@ fun main(args: Array<String>) {
     try {
         setupEnTranslation()
         setupFrTranslation()
+        deletePreviousVersions()
 
         launch(MainApplication::class.java)
     } catch (e: Exception) {
@@ -57,6 +62,15 @@ fun main(args: Array<String>) {
     }
 }
 
+/**
+ * Sets up the English translation for the application.
+ * It sets the translation for various text keys used in the application to their corresponding English values.
+ * The translated text keys and values are stored in the `Language.translation` object.
+ *
+ * The keys and values for the translation are provided in the method body.
+ *
+ * This method does not return anything.
+ */
 fun setupEnTranslation() {
     val translation = Language.translation
     val lang = "en"
@@ -85,8 +99,27 @@ fun setupEnTranslation() {
     translation.setTraduction(lang, "text.showAll", "Show all")
     translation.setTraduction(lang, "text.onlyCredits" , "Show only credits")
     translation.setTraduction(lang, "text.onlyDebits", "Show only debits")
+
+    translation.setTraduction(lang, "text.alert.askAccount.warning", "You have to enter an account name to add a transaction list")
+    translation.setTraduction(lang, "text.dialog.chooseFile.title", "Account name")
+    translation.setTraduction(lang, "text.dialog.chooseFile.headerText", "What is the name of this account ?")
+    translation.setTraduction(lang, "text.dialog.chooseFile.contentText", "Account name")
+
+    translation.setTraduction(lang, "text.menu.changeDescription", "Change Description")
+    translation.setTraduction(lang, "text.menu.changeDescription.description", "Please enter a new description: ")
+
+    translation.setTraduction(lang, "comboBox.all", "All accounts")
 }
 
+/**
+ * Sets up the French translation for the application.
+ * It sets the translation for various text keys used in the application to their corresponding French values.
+ * The translated text keys and values are stored in the `Language.translation` object.
+ *
+ * The keys and values for the translation are provided in the method body.
+ *
+ * This method does not return anything.
+ */
 fun setupFrTranslation() {
     val translation = Language.translation
     val lang = "fr"
@@ -115,6 +148,37 @@ fun setupFrTranslation() {
     translation.setTraduction(lang, "text.showAll", "Tout afficher")
     translation.setTraduction(lang, "text.onlyCredits" , "Uniquement les crédits")
     translation.setTraduction(lang, "text.onlyDebits", "Uniquement les débits")
+
+    translation.setTraduction(lang, "text.alert.askAccount.warning", "Vous devez entrer un nom de compte pour ajouter une liste de transactions")
+    translation.setTraduction(lang, "text.dialog.chooseFile.title", "Nom du compte")
+    translation.setTraduction(lang, "text.dialog.chooseFile.headerText", "Quel est le nom de ce compte ?")
+    translation.setTraduction(lang, "text.dialog.chooseFile.contentText", "Nom du compte")
+
+    translation.setTraduction(lang, "text.menu.changeDescription", "Changer la description")
+    translation.setTraduction(lang, "text.menu.changeDescription.description", "Veuillez entrez une nouvelle description: ")
+
+    translation.setTraduction(lang, "comboBox.all", "Tous les comptes")
 }
 
+fun deletePreviousVersions() {
+    val programFiles = System.getenv("APPDATA")
+    val folderPath = programFiles + File.separator + "Budget Manager"
 
+    println("Folder Path : $folderPath")
+
+    val pattern = Pattern.compile("^(.*)-(\\d+\\.\\d+\\.\\d+)-all\\.jar$")
+
+    var files = File(folderPath).listFiles { file ->
+        pattern.matcher(file.name).matches()
+    }?.toList() ?: emptyList()
+
+    for (i in 0..files.size - 2) {
+        val file = files[i]
+        println("Deleting ${file.name}")
+        if(file.delete()) {
+            println("Deleted ${file.name}")
+        } else {
+            println("Error deleting ${file.name}")
+        }
+    }
+}

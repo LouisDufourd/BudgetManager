@@ -6,7 +6,6 @@ import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.StandardCopyOption
 import java.sql.Connection
-import java.sql.DriverManager
 import java.sql.Types
 
 class Migrate {
@@ -37,11 +36,11 @@ class Migrate {
                 if(!whichVersion) {
                     migrateFromVersion0(username, password)
                 } else {
-                    migrateFromVersion1()
+                    migrateFromVersion1(username, password)
                 }
             }
             1 -> {
-                migrateFromVersion1()
+                migrateFromVersion1(username, password)
             }
             2 -> {
                 migrateFromVersion2()
@@ -87,8 +86,6 @@ class Migrate {
         val rs = preparedStatement.executeQuery()
         val transactions = mutableListOf<TransactionV0>()
         while (rs.next()) {
-            val credit = rs.getString("credit")
-
             transactions.add(
                 TransactionV0(
                     rs.getInt("id"),
@@ -125,18 +122,32 @@ class Migrate {
         preparedStatement.close()
         connection.close()
 
-        migrateFromVersion1()
+        migrateFromVersion1(username, password)
     }
-    private fun migrateFromVersion1() {
+    private fun migrateFromVersion1(username: String, password: String) {
         /**
          * CHANGE SCHEMA VERSION TO 1
          */
         DatabaseVersion.VERSION = 1
 
+        println("alter table transactions add column custom_description TEXT NULL")
+
+        val connection = getConnection()
+        var preparedStatement = connection.prepareStatement("ALTER TABLE transactions ADD COLUMN custom_description TEXT NULL")
+        preparedStatement.execute()
+
+        preparedStatement = connection.prepareStatement("ALTER TABLE transactions ADD COLUMN account VARCHAR(255)")
+        preparedStatement.execute()
+
+        preparedStatement = connection.prepareStatement("UPDATE transactions SET account = ? WHERE username = ?")
+        preparedStatement.setString(1, encrypt(username, password, "Main Account"))
+        preparedStatement.setString(2, encrypt(username, password, username))
+        preparedStatement.executeUpdate()
+
         migrateFromVersion2()
     }
     private fun migrateFromVersion2() {
-
+        DatabaseVersion.VERSION = 2
     }
 
     private fun backup() {
