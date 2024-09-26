@@ -9,10 +9,36 @@ class Connexion(username: String, password: String) {
     init {
         Migrate().migrate(username, password)
 
-        val connection = getConnection()
-        val statement = connection.createStatement()
+        initDatabase()
+    }
 
-        statement.executeUpdate("""
+
+    /**
+     * Retrieves a connection to the database.
+     *
+     * @return The connection to the database.
+     */
+    fun getConnection(): Connection {
+        return Connexion.getConnection()
+    }
+
+
+    companion object {
+        fun getConnection(): Connection {
+            val userHome = System.getProperty("user.home")
+            val documentsPath = "${userHome + File.separator}Documents"
+            val dbPath = "${documentsPath + File.separator}Budget Manager${File.separator}budget.db"
+
+            File(dbPath).parentFile.mkdirs()
+
+            return DriverManager.getConnection("jdbc:sqlite:$dbPath")
+        }
+
+        fun initDatabase() {
+            val connection = getConnection()
+            val statement = connection.createStatement()
+
+            statement.executeUpdate("""
             CREATE TABLE IF NOT EXISTS transactions (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 username VARCHAR(255) NOT NULL,
@@ -30,28 +56,8 @@ class Connexion(username: String, password: String) {
             );
         """)
 
-        val preparedStatement = connection.prepareStatement("PRAGMA user_version = ${DatabaseVersion.VERSION};")
-        preparedStatement.executeUpdate()
-    }
-
-    /**
-     * Retrieves a connection to the database.
-     *
-     * @return The connection to the database.
-     */
-    fun getConnection(): Connection {
-        return Connexion.getConnection()
-    }
-
-    companion object {
-        fun getConnection(): Connection {
-            val userHome = System.getProperty("user.home")
-            val documentsPath = "${userHome + File.separator}Documents"
-            val dbPath = "${documentsPath + File.separator}Budget Manager${File.separator}budget.db"
-
-            File(dbPath).parentFile.mkdirs()
-
-            return DriverManager.getConnection("jdbc:sqlite:$dbPath")
+            val preparedStatement = connection.prepareStatement("PRAGMA user_version = ${DatabaseVersion.VERSION};")
+            preparedStatement.executeUpdate()
         }
     }
 }

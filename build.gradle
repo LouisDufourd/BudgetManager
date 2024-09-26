@@ -9,7 +9,7 @@ plugins {
 }
 
 group 'com.plaglefleau'
-version '1.4.0'
+version '1.4.2'
 
 repositories {
     mavenCentral()
@@ -101,6 +101,5 @@ tasks.register("jarToZip", Zip) {
     archiveFileName.set(project.name + "-" + version + ".zip")
 
     destinationDirectory.set(file("build/output"))
-
 }
 

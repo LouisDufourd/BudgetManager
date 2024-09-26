@@ -10,14 +10,28 @@ import java.util.*
 
 class TransactionManager(val username: String, val password:String) {
 
+    fun parseAccountName(rawData: String): String {
+        val accountNameRegex = Regex("^(.*?)(carte|n°)")
+        val lines = rawData.lines()
+
+        for (line in lines) {
+            val matchResult = accountNameRegex.find(line)
+            if (matchResult != null) {
+                return matchResult.groupValues[1].trim()
+            }
+        }
+
+        return "Unknown Account" // Fallback if no account name is found
+    }
+
     /**
      * Parses the transactions from a file.
      *
      * @param filePath The path of the file to parse.
      * @return A list of parsed transactions.
      */
-    fun parseTransactions(filePath: Path, username: String, account: String): List<DatabaseTransactionModel> {
-        return parseTransactions(filePath.toFile(), username, account)
+    fun parseTransactions(filePath: Path, username: String): List<DatabaseTransactionModel> {
+        return parseTransactions(filePath.toFile(), username)
     }
 
     /**
@@ -26,11 +40,11 @@ class TransactionManager(val username: String, val password:String) {
      * @param file The file to parse.
      * @return A list of parsed transactions.
      */
-    fun parseTransactions(file: File, username: String, account: String): List<DatabaseTransactionModel> {
+    fun parseTransactions(file: File, username: String): List<DatabaseTransactionModel> {
 
         val rawData = file.readText(Charset.forName("Cp1252"))
 
-        return parseTransactions(rawData, username, account)
+        return parseTransactions(rawData, username)
     }
 
     /**
@@ -38,7 +52,7 @@ class TransactionManager(val username: String, val password:String) {
      *
      * @param rawData The raw data string containing transaction information.
      **/
-    fun parseTransactions(rawData: String, username: String, account: String): List<DatabaseTransactionModel> {
+    fun parseTransactions(rawData: String, username: String): List<DatabaseTransactionModel> {
 
         val databaseTransactionModels = mutableListOf<DatabaseTransactionModel>()
 
@@ -88,7 +102,7 @@ class TransactionManager(val username: String, val password:String) {
                             date = date,
                             username = username,
                             description = description,
-                            account = account,
+                            account = parseAccountName(rawData),
                             customDescription = "",
                             debit = debit,
                             credit = credit
@@ -187,6 +201,14 @@ class TransactionManager(val username: String, val password:String) {
         }
     }
 
+    /**
+     * Retrieves a list of transactions associated with a specific account, filtered by the given date range.
+     *
+     * @param account The account identifier for which transactions are to be retrieved.
+     * @param beforeDate The upper bound of the date range (inclusive). Transactions must occur before this date.
+     * @param afterDate The lower bound of the date range (inclusive). Transactions must occur after this date.
+     * @return A list of DatabaseTransactionModel objects representing the filtered transactions.
+     */
     fun getTransactionsByAccount(account: String, beforeDate: Calendar?, afterDate: Calendar?): List<DatabaseTransactionModel> {
         val transactions = getTransactionsBasedOnSelectedDate(afterDate, beforeDate)
 

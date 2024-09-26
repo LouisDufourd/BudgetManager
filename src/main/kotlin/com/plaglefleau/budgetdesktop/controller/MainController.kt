@@ -123,20 +123,7 @@ class MainController {
             val chosenFile = fileChooser.showOpenDialog(primaryStage)
 
             if (chosenFile != null) {
-                var account = ""
-
-                while (true) {
-                    val result = askAccount()
-
-                    if(result.isPresent) {
-                        account = result.get()
-                        break
-                    }
-
-                    Alert(Alert.AlertType.WARNING , translation.getTraduction(Language.lang, "text.alert.askAccount.warning")).showAndWait()
-                }
-
-                val transactions = transactionManager.parseTransactions(chosenFile, login.username, account)
+                val transactions = transactionManager.parseTransactions(chosenFile, login.username)
                 databaseManager.uploadTransactions(transactions)
                 databaseTransactionModelTableView.items = getFilteredList()
                 setTotalCreditDebitAndFluctuation()
@@ -429,6 +416,11 @@ class MainController {
 
     }
 
+    /**
+     * Prompts the user to input an account name using a text dialog.
+     *
+     * @return An Optional containing the account name if the user provides one, or an empty Optional if the user cancels the dialog.
+     */
     private fun askAccount(): Optional<String> {
         val dialog = TextInputDialog("")
         dialog.title = translation.getTraduction(Language.lang, "text.dialog.chooseFile.title")
@@ -438,6 +430,17 @@ class MainController {
         return dialog.showAndWait()
     }
 
+    /**
+     * Sets up the account filter combo box with available account options.
+     *
+     * This method retrieves the list of available accounts associated with the current user's
+     * login information and populates the account filter combo box with these accounts.
+     * Additionally, an option labeled "all" is added to the beginning of the list to allow
+     * the user to view transactions from all accounts.
+     *
+     * The combo box's items property is updated with the retrieved and formatted list of accounts,
+     * and its default value is set to the "all" option.
+     */
     private fun setAccountFilterComboBox() {
         val accounts = mutableListOf(databaseManager.getAccounts(login.username))
         val all = translation.getTraduction(Language.lang, "comboBox.all")

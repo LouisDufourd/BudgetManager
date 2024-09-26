@@ -121,6 +121,17 @@ class ChartsController: Initializable {
         return calendar
     }
 
+    /**
+     * Retrieves a sorted list of transactions for a given account.
+     *
+     * This function fetches transactions from the transactionManager based on the specified criteria,
+     * including a date range defined by the beforeDatePicker and afterDatePicker values.
+     * The resulting transactions are then sorted by date before being returned.
+     *
+     * @param account The account identifier for which transactions should be retrieved.
+     * @return A list of DatabaseTransactionModel objects representing the transactions,
+     *         sorted by date in ascending order.
+     */
     private fun getTransactions(account: String) : List<DatabaseTransactionModel> {
         val transactions = transactionManager.getTransactions(
             account,
@@ -133,6 +144,17 @@ class ChartsController: Initializable {
         return transactions.sortedBy { it.date }
     }
 
+    /**
+     * Retrieves a series of data points representing transactions for a given account.
+     *
+     * The method fetches transactions associated with the specified account,
+     * processes each transaction to compute the cumulative amount by date,
+     * and then formats the transaction data into a series suitable for plotting on a chart.
+     *
+     * @param account The account identifier for which the series should be generated.
+     * @return A Series object where the x-values represent formatted dates and
+     *         the y-values represent the cumulative transaction amounts.
+     */
     private fun getSeries(account: String) : Series<String, Double> {
         val transactions = getTransactions(account)
 
@@ -167,6 +189,13 @@ class ChartsController: Initializable {
         return series
     }
 
+    /**
+     * Updates the labels of various UI elements to reflect the current language settings.
+     *
+     * This method retrieves translations for specific labels related to account filtering
+     * and date pickers using the current language setting. The updated translations are then
+     * assigned to the corresponding label text properties.
+     */
     private fun updateLang() {
         accountFilterLabel.text = translation.getTraduction(Language.lang, "comboBox.account")
         beforeDatePickerLabel.text = translation.getTraduction(Language.lang, "datePicker.before")

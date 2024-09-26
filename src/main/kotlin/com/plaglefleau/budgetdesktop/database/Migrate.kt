@@ -27,6 +27,11 @@ class Migrate {
             0 -> {
                 val schemas = getDatabaseSchema()
                 var whichVersion = false
+
+                if(schemas.size == 1) {
+                    return
+                }
+
                 for (schema in schemas) {
                     if(schema.key == "transactions" && schema.value.contains("username")) {
                         whichVersion = true
@@ -124,28 +129,64 @@ class Migrate {
 
         migrateFromVersion1(username, password)
     }
+
     private fun migrateFromVersion1(username: String, password: String) {
         /**
          * CHANGE SCHEMA VERSION TO 1
          */
         DatabaseVersion.VERSION = 1
 
-        println("alter table transactions add column custom_description TEXT NULL")
-
         val connection = getConnection()
-        var preparedStatement = connection.prepareStatement("ALTER TABLE transactions ADD COLUMN custom_description TEXT NULL")
-        preparedStatement.execute()
 
-        preparedStatement = connection.prepareStatement("ALTER TABLE transactions ADD COLUMN account VARCHAR(255)")
-        preparedStatement.execute()
+        // Check if the 'custom_description' column exists
+        val checkCustomColumnStatement = connection.prepareStatement("PRAGMA table_info(transactions);")
+        val rs = checkCustomColumnStatement.executeQuery()
+        var customColumnExists = false
+        var accountColumnExists = false
 
-        preparedStatement = connection.prepareStatement("UPDATE transactions SET account = ? WHERE username = ?")
-        preparedStatement.setString(1, encrypt(username, password, "Main Account"))
-        preparedStatement.setString(2, encrypt(username, password, username))
-        preparedStatement.executeUpdate()
+        while (rs.next()) {
+            val columnName = rs.getString("name")
+            if (columnName == "custom_description") {
+                customColumnExists = true
+            }
+            if (columnName == "account") {
+                accountColumnExists = true
+            }
+        }
+        rs.close()
+
+        // Add 'custom_description' column if it doesn't exist
+        if (!customColumnExists) {
+            println("Adding custom_description column to transactions table")
+            val preparedStatement = connection.prepareStatement("ALTER TABLE transactions ADD COLUMN custom_description TEXT NULL")
+            preparedStatement.execute()
+            preparedStatement.close()
+        } else {
+            println("custom_description column already exists, skipping addition.")
+        }
+
+        // Add 'account' column if it doesn't exist
+        if (!accountColumnExists) {
+            println("Adding account column to transactions table")
+            val preparedStatement = connection.prepareStatement("ALTER TABLE transactions ADD COLUMN account VARCHAR(255)")
+            preparedStatement.execute()
+            preparedStatement.close()
+        } else {
+            println("account column already exists, skipping addition.")
+        }
+
+        // Update existing rows to include a default account value
+        val preparedStatementUpdate = connection.prepareStatement("UPDATE transactions SET account = ? WHERE username = ?")
+        preparedStatementUpdate.setString(1, encrypt(username, password, "Main Account"))
+        preparedStatementUpdate.setString(2, encrypt(username, password, username))
+        preparedStatementUpdate.executeUpdate()
+        preparedStatementUpdate.close()
+
+        connection.close()
 
         migrateFromVersion2()
     }
+
     private fun migrateFromVersion2() {
         DatabaseVersion.VERSION = 2
     }
